@@ -991,6 +991,26 @@ h1 {
   font-size: clamp(1.2rem, 2.4vw, 1.55rem);
 }
 
+.leaderboard-status {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(36, 127, 195, 0.12);
+  color: #315665;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.leaderboard-status--online {
+  background: rgba(47, 155, 97, 0.14);
+  color: #1e7045;
+}
+
+.leaderboard-status--error {
+  background: rgba(225, 73, 62, 0.12);
+  color: #8d2525;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 8px;

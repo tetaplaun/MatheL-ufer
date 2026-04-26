@@ -28,6 +28,10 @@ const FINISH_PROGRESS = 100;
 const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
 const LAST_PLAYER_NAME_KEY = 'mathelaeufer-last-player-name';
 const MAX_LEADERBOARD_ENTRIES = 100;
+const SUPABASE_URL = (import.meta.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/$/, '');
+const SUPABASE_ANON_KEY = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const SUPABASE_LEADERBOARD_TABLE = 'leaderboard_entries';
+const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -57,6 +61,13 @@ const formatFactorRange = (settings, maxFactor) => {
 };
 const compareLeaderboardEntries = (a, b) =>
   a.totalSeconds - b.totalSeconds || a.mistakes - b.mistakes || a.averageAnswerSeconds - b.averageAnswerSeconds;
+const persistLocalLeaderboard = (entries) => {
+  try {
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
+  } catch {
+    // The in-memory list still updates if browser storage is unavailable.
+  }
+};
 const loadLeaderboard = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) ?? '[]');
@@ -71,6 +82,79 @@ const loadLastPlayerName = () => {
   } catch {
     return '';
   }
+};
+const supabaseHeaders = () => ({
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+});
+const mapSupabaseEntry = (row) => ({
+  id: row.id,
+  name: row.player_name,
+  date: row.created_at,
+  settingsKey: row.settings_key,
+  difficultyLabel: row.difficulty_label,
+  factorRangeLabel: row.factor_range_label,
+  routeLabel: row.route_label,
+  routeMeters: Number(row.route_meters) || 0,
+  stops: Number(row.stops) || 0,
+  answerCount: Number(row.answer_count) || 0,
+  totalSeconds: Number(row.total_seconds) || 0,
+  mistakes: Number(row.mistakes) || 0,
+  averageAnswerSeconds: Number(row.average_answer_seconds) || 0,
+  fastestAnswerSeconds: Number(row.fastest_answer_seconds) || 0,
+  topSpeed: Number(row.top_speed) || 0,
+});
+const mapEntryToSupabase = (entry) => ({
+  player_name: entry.name,
+  settings_key: entry.settingsKey,
+  difficulty_label: entry.difficultyLabel,
+  factor_range_label: entry.factorRangeLabel,
+  route_label: entry.routeLabel,
+  route_meters: entry.routeMeters,
+  stops: entry.stops,
+  answer_count: entry.answerCount,
+  total_seconds: entry.totalSeconds,
+  mistakes: entry.mistakes,
+  average_answer_seconds: entry.averageAnswerSeconds,
+  fastest_answer_seconds: entry.fastestAnswerSeconds,
+  top_speed: entry.topSpeed,
+});
+const loadSupabaseLeaderboard = async (settingsKey) => {
+  const params = new URLSearchParams({
+    select:
+      'id,player_name,settings_key,difficulty_label,factor_range_label,route_label,route_meters,stops,answer_count,total_seconds,mistakes,average_answer_seconds,fastest_answer_seconds,top_speed,created_at',
+    settings_key: `eq.${settingsKey}`,
+    order: 'total_seconds.asc,mistakes.asc,average_answer_seconds.asc',
+    limit: '10',
+  });
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}?${params.toString()}`, {
+    headers: supabaseHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Supabase leaderboard could not be loaded.');
+  }
+
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows.map(mapSupabaseEntry) : [];
+};
+const saveSupabaseLeaderboardEntry = async (entry) => {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}`, {
+    method: 'POST',
+    headers: {
+      ...supabaseHeaders(),
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(mapEntryToSupabase(entry)),
+  });
+
+  if (!response.ok) {
+    throw new Error('Supabase leaderboard entry could not be saved.');
+  }
+
+  const rows = await response.json();
+  return Array.isArray(rows) && rows[0] ? mapSupabaseEntry(rows[0]) : entry;
 };
 
 function makeQuestion(settings) {
@@ -151,8 +235,11 @@ export default function App() {
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState(() => loadLeaderboard());
+  const [leaderboardStatus, setLeaderboardStatus] = useState(SUPABASE_ENABLED ? 'loading' : 'local');
+  const [leaderboardError, setLeaderboardError] = useState('');
   const [playerName, setPlayerName] = useState(() => loadLastPlayerName());
   const [savedRaceId, setSavedRaceId] = useState(null);
+  const [isSavingLeaderboard, setIsSavingLeaderboard] = useState(false);
   const [phase, setPhase] = useState('ready');
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(BASE_SPEED);
@@ -211,6 +298,45 @@ export default function App() {
         .slice(0, 10),
     [leaderboardEntries, settingsKey],
   );
+
+  useEffect(() => {
+    if (!SUPABASE_ENABLED) {
+      setLeaderboardStatus('local');
+      return undefined;
+    }
+
+    let isCurrent = true;
+    setLeaderboardStatus('loading');
+    setLeaderboardError('');
+
+    loadSupabaseLeaderboard(settingsKey)
+      .then((remoteEntries) => {
+        if (!isCurrent) {
+          return;
+        }
+
+        setLeaderboardEntries((entries) => {
+          const nextEntries = [...entries.filter((entry) => entry.settingsKey !== settingsKey), ...remoteEntries]
+            .sort(compareLeaderboardEntries)
+            .slice(0, MAX_LEADERBOARD_ENTRIES);
+          persistLocalLeaderboard(nextEntries);
+          return nextEntries;
+        });
+        setLeaderboardStatus('online');
+      })
+      .catch(() => {
+        if (!isCurrent) {
+          return;
+        }
+
+        setLeaderboardStatus('error');
+        setLeaderboardError('Supabase nicht erreichbar. Lokale Rangliste wird angezeigt.');
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [settingsKey]);
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -280,10 +406,10 @@ export default function App() {
     }));
   }
 
-  function saveLeaderboardEntry(event) {
+  async function saveLeaderboardEntry(event) {
     event.preventDefault();
 
-    if (phase !== 'finished' || !finishTime || savedRaceId === finishTime) {
+    if (phase !== 'finished' || !finishTime || savedRaceId === finishTime || isSavingLeaderboard) {
       return;
     }
 
@@ -307,13 +433,25 @@ export default function App() {
       topSpeed: raceSummary.topSpeed,
     };
 
-    setLeaderboardEntries((entries) => {
-      const nextEntries = [...entries, entry].sort(compareLeaderboardEntries).slice(0, MAX_LEADERBOARD_ENTRIES);
-      try {
-        localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(nextEntries));
-      } catch {
-        // The in-memory list still updates if browser storage is unavailable.
+    setIsSavingLeaderboard(true);
+    setLeaderboardError('');
+
+    let savedEntry = entry;
+    try {
+      if (SUPABASE_ENABLED) {
+        savedEntry = await saveSupabaseLeaderboardEntry(entry);
+        setLeaderboardStatus('online');
+      } else {
+        setLeaderboardStatus('local');
       }
+    } catch {
+      setLeaderboardStatus('error');
+      setLeaderboardError('Konnte nicht in Supabase speichern. Der Eintrag bleibt lokal gespeichert.');
+    }
+
+    setLeaderboardEntries((entries) => {
+      const nextEntries = [...entries, savedEntry].sort(compareLeaderboardEntries).slice(0, MAX_LEADERBOARD_ENTRIES);
+      persistLocalLeaderboard(nextEntries);
       return nextEntries;
     });
     try {
@@ -323,6 +461,7 @@ export default function App() {
     }
     setPlayerName(entryName);
     setSavedRaceId(finishTime);
+    setIsSavingLeaderboard(false);
   }
 
   function resetToReady() {
@@ -431,6 +570,14 @@ export default function App() {
   const speedLabel = `${speed.toFixed(1)} m/s`;
   const timeLabel = phase === 'finished' ? formatSeconds(totalSeconds) : startedAt ? formatSeconds(totalSeconds) : '0.0 s';
   const hasSavedCurrentRace = finishTime !== null && savedRaceId === finishTime;
+  const leaderboardStatusText =
+    leaderboardStatus === 'loading'
+      ? 'Online-Rangliste wird geladen.'
+      : leaderboardStatus === 'online'
+        ? 'Online-Rangliste über Supabase.'
+        : leaderboardStatus === 'error'
+          ? leaderboardError
+          : 'Lokale Rangliste im Browser.';
 
   return (
     <main className="app-shell">
@@ -672,6 +819,9 @@ export default function App() {
                 ×
               </button>
             </div>
+            <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
+              {leaderboardStatusText}
+            </p>
             {currentLeaderboard.length > 0 ? (
               <ol className="leaderboard-list">
                 {currentLeaderboard.map((entry, index) => (
@@ -749,7 +899,7 @@ export default function App() {
               <label>
                 <span>Name für Rangliste</span>
                 <input
-                  disabled={hasSavedCurrentRace}
+                  disabled={hasSavedCurrentRace || isSavingLeaderboard}
                   maxLength="18"
                   placeholder="Name"
                   type="text"
@@ -757,13 +907,16 @@ export default function App() {
                   onChange={(event) => setPlayerName(event.target.value)}
                 />
               </label>
-              <button className="secondary-action" disabled={hasSavedCurrentRace} type="submit">
-                {hasSavedCurrentRace ? 'Gespeichert' : 'Eintragen'}
+              <button className="secondary-action" disabled={hasSavedCurrentRace || isSavingLeaderboard} type="submit">
+                {isSavingLeaderboard ? 'Speichert...' : hasSavedCurrentRace ? 'Gespeichert' : 'Eintragen'}
               </button>
             </form>
 
             <div className="leaderboard-preview" aria-label="Rangliste für diese Einstellung">
               <h3>Rangliste für diese Einstellung</h3>
+              <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
+                {leaderboardStatusText}
+              </p>
               {currentLeaderboard.length > 0 ? (
                 <ol className="leaderboard-list">
                   {currentLeaderboard.map((entry, index) => (
