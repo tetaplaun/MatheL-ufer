@@ -1,6 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-const CHECKPOINTS = [14, 28, 42, 56, 70, 84, 96];
+const DIFFICULTY_OPTIONS = [
+  { id: 'small', label: 'Kleines Einmaleins', maxFactor: 10, description: 'bis 10 × 10' },
+  { id: 'large', label: 'Großes Einmaleins', maxFactor: 20, description: 'bis 20 × 20' },
+];
+
+const ROUTE_OPTIONS = [
+  { id: 'short', label: 'Kurz', meters: 300, stops: 5 },
+  { id: 'medium', label: 'Mittel', meters: 500, stops: 7 },
+  { id: 'long', label: 'Lang', meters: 800, stops: 10 },
+];
+
+const DEFAULT_SETTINGS = {
+  difficulty: 'small',
+  skipEasyRows: false,
+  routeLength: 'medium',
+};
+
 const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
 const MAX_SPEED = 11.5;
@@ -8,17 +24,23 @@ const FINISH_PROGRESS = 100;
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const formatSeconds = (seconds) => `${seconds.toFixed(1)} s`;
+const makeCheckpoints = (stops) =>
+  Array.from({ length: stops }, (_, index) => Math.round(((index + 1) / (stops + 1)) * FINISH_PROGRESS));
 
-function makeQuestion() {
-  const a = randomInt(1, 10);
-  const b = randomInt(1, 10);
+function makeQuestion(settings) {
+  const difficulty = DIFFICULTY_OPTIONS.find((option) => option.id === settings.difficulty) ?? DIFFICULTY_OPTIONS[0];
+  const minFactor = settings.skipEasyRows ? 3 : 1;
+  const maxFactor = difficulty.maxFactor;
+  const a = randomInt(minFactor, maxFactor);
+  const b = randomInt(minFactor, maxFactor);
   const correct = a * b;
   const options = new Set([correct]);
 
   while (options.size < 4) {
-    const drift = randomInt(-14, 14);
+    const drift = randomInt(-(maxFactor + 4), maxFactor + 4);
     const nearby = correct + drift;
-    const tableLike = randomInt(1, 10) * randomInt(1, 10);
+    const tableLike = randomInt(minFactor, maxFactor) * randomInt(minFactor, maxFactor);
     const candidate = Math.random() > 0.45 ? nearby : tableLike;
 
     if (candidate > 0 && candidate !== correct) {
@@ -80,90 +102,165 @@ function StatusPill({ label, value }) {
 }
 
 export default function App() {
+  const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [phase, setPhase] = useState('ready');
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(BASE_SPEED);
   const [checkpointIndex, setCheckpointIndex] = useState(0);
-  const [question, setQuestion] = useState(() => makeQuestion());
+  const [question, setQuestion] = useState(() => makeQuestion(DEFAULT_SETTINGS));
   const [runnerState, setRunnerState] = useState('standing');
   const [feedback, setFeedback] = useState('Bereit?');
   const [wrongAnswers, setWrongAnswers] = useState([]);
   const [answerStartedAt, setAnswerStartedAt] = useState(null);
   const [finishTime, setFinishTime] = useState(null);
   const [startedAt, setStartedAt] = useState(null);
+  const [answerStats, setAnswerStats] = useState([]);
+  const [runDurationMs, setRunDurationMs] = useState(0);
+  const [clockTick, setClockTick] = useState(0);
 
   const animationRef = useRef(null);
-  const lastFrameRef = useRef(null);
   const timeoutRef = useRef(null);
+  const runTimeoutRef = useRef(null);
 
-  const nextCheckpoint = CHECKPOINTS[checkpointIndex] ?? FINISH_PROGRESS;
-  const coveredMeters = Math.round(progress * 5);
+  const selectedDifficulty = DIFFICULTY_OPTIONS.find((option) => option.id === gameSettings.difficulty) ?? DIFFICULTY_OPTIONS[0];
+  const routeConfig = ROUTE_OPTIONS.find((option) => option.id === gameSettings.routeLength) ?? ROUTE_OPTIONS[1];
+  const checkpoints = useMemo(() => makeCheckpoints(routeConfig.stops), [routeConfig.stops]);
+  const factorStart = gameSettings.skipEasyRows ? 3 : 1;
+  const factorRangeLabel = `${factorStart}er bis ${selectedDifficulty.maxFactor}er Reihe`;
+  const nextCheckpoint = checkpoints[checkpointIndex] ?? FINISH_PROGRESS;
+  const coveredMeters = Math.round((progress / FINISH_PROGRESS) * routeConfig.meters);
   const totalSeconds = useMemo(() => {
     const end = finishTime ?? performance.now();
     return startedAt ? Math.max(0, (end - startedAt) / 1000) : 0;
-  }, [finishTime, startedAt, phase, progress]);
+  }, [finishTime, startedAt, clockTick]);
+  const raceSummary = useMemo(() => {
+    const answered = answerStats.length;
+    const totalMistakes = answerStats.reduce((sum, answer) => sum + answer.mistakes, 0);
+    const totalAnswerSeconds = answerStats.reduce((sum, answer) => sum + answer.answerSeconds, 0);
+    const fastestAnswer = answerStats.reduce(
+      (fastest, answer) => Math.min(fastest, answer.answerSeconds),
+      Number.POSITIVE_INFINITY,
+    );
+    const biggestBoost = answerStats.reduce((best, answer) => Math.max(best, answer.boost), 0);
+    const topSpeed = answerStats.reduce((best, answer) => Math.max(best, answer.speedAfter), BASE_SPEED);
+
+    return {
+      answered,
+      totalMistakes,
+      averageAnswerSeconds: answered ? totalAnswerSeconds / answered : 0,
+      fastestAnswerSeconds: Number.isFinite(fastestAnswer) ? fastestAnswer : 0,
+      biggestBoost,
+      topSpeed,
+    };
+  }, [answerStats]);
 
   useEffect(() => {
     if (phase !== 'running') {
-      cancelAnimationFrame(animationRef.current);
-      lastFrameRef.current = null;
+      clearTimeout(runTimeoutRef.current);
       return undefined;
     }
 
-    const tick = (now) => {
-      if (!lastFrameRef.current) {
-        lastFrameRef.current = now;
+    const stopAt = checkpoints[checkpointIndex] ?? FINISH_PROGRESS;
+    const distance = Math.max(0, stopAt - progress);
+    const durationMs = Math.max(320, (distance / speed) * 1000);
+
+    clearTimeout(runTimeoutRef.current);
+    cancelAnimationFrame(animationRef.current);
+    setRunDurationMs(durationMs);
+    animationRef.current = requestAnimationFrame(() => {
+      setProgress(stopAt);
+    });
+
+    runTimeoutRef.current = setTimeout(() => {
+      if (stopAt >= FINISH_PROGRESS) {
+        setPhase('finished');
+        setRunnerState('cheering');
+        setFinishTime(performance.now());
+        setFeedback('Ziel erreicht!');
+        return;
       }
 
-      const deltaSeconds = Math.min(0.05, (now - lastFrameRef.current) / 1000);
-      lastFrameRef.current = now;
+      setPhase('quiz');
+      setRunnerState('braking');
+      setQuestion(makeQuestion(gameSettings));
+      setWrongAnswers([]);
+      setAnswerStartedAt(performance.now());
+      setFeedback('Wähle die richtige Antwort.');
+    }, durationMs);
 
-      setProgress((current) => {
-        const next = clamp(current + speed * deltaSeconds, 0, FINISH_PROGRESS);
-        const stopAt = CHECKPOINTS[checkpointIndex];
-
-        if (stopAt && next >= stopAt) {
-          setPhase('quiz');
-          setRunnerState('braking');
-          setQuestion(makeQuestion());
-          setWrongAnswers([]);
-          setAnswerStartedAt(performance.now());
-          setFeedback('Wähle die richtige Antwort.');
-          return stopAt;
-        }
-
-        if (next >= FINISH_PROGRESS) {
-          setPhase('finished');
-          setRunnerState('cheering');
-          setFinishTime(performance.now());
-          setFeedback('Ziel erreicht!');
-          return FINISH_PROGRESS;
-        }
-
-        return next;
-      });
-
-      animationRef.current = requestAnimationFrame(tick);
+    return () => {
+      clearTimeout(runTimeoutRef.current);
+      cancelAnimationFrame(animationRef.current);
     };
+  }, [phase, speed, checkpointIndex, checkpoints, gameSettings]);
 
-    animationRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [phase, speed, checkpointIndex]);
+  useEffect(() => {
+    if (!startedAt || phase === 'ready' || phase === 'finished') {
+      return undefined;
+    }
 
-  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+    const intervalId = setInterval(() => {
+      setClockTick((tick) => tick + 1);
+    }, 100);
+
+    return () => clearInterval(intervalId);
+  }, [startedAt, phase]);
+
+  useEffect(
+    () => () => {
+      clearTimeout(timeoutRef.current);
+      clearTimeout(runTimeoutRef.current);
+      cancelAnimationFrame(animationRef.current);
+    },
+    [],
+  );
+
+  function updateSetting(key, value) {
+    setGameSettings((settings) => ({
+      ...settings,
+      [key]: value,
+    }));
+  }
+
+  function resetToReady() {
+    clearTimeout(timeoutRef.current);
+    clearTimeout(runTimeoutRef.current);
+    cancelAnimationFrame(animationRef.current);
+    setIsRulesOpen(false);
+    setRunDurationMs(0);
+    setPhase('ready');
+    setProgress(0);
+    setSpeed(BASE_SPEED);
+    setCheckpointIndex(0);
+    setQuestion(makeQuestion(gameSettings));
+    setWrongAnswers([]);
+    setRunnerState('standing');
+    setFeedback('Bereit?');
+    setStartedAt(null);
+    setFinishTime(null);
+    setAnswerStats([]);
+    setClockTick(0);
+  }
 
   function startGame() {
     clearTimeout(timeoutRef.current);
+    clearTimeout(runTimeoutRef.current);
+    cancelAnimationFrame(animationRef.current);
+    setIsRulesOpen(false);
+    setRunDurationMs(0);
     setPhase('running');
     setProgress(0);
     setSpeed(BASE_SPEED);
     setCheckpointIndex(0);
-    setQuestion(makeQuestion());
+    setQuestion(makeQuestion(gameSettings));
     setWrongAnswers([]);
     setRunnerState('running');
     setFeedback('Los gehts!');
     setStartedAt(performance.now());
     setFinishTime(null);
+    setAnswerStats([]);
+    setClockTick(0);
   }
 
   function continueRunning(nextSpeed) {
@@ -189,7 +286,25 @@ export default function App() {
     if (answer === question.correct) {
       const elapsed = answerStartedAt ? (performance.now() - answerStartedAt) / 1000 : 6;
       const boost = elapsed < 2 ? 1.9 : elapsed < 5 ? 1 : 0.35;
-      continueRunning(clamp(speed + boost, MIN_SPEED, MAX_SPEED));
+      const nextSpeed = clamp(speed + boost, MIN_SPEED, MAX_SPEED);
+
+      setAnswerStats((stats) => [
+        ...stats,
+        {
+          id: `${checkpointIndex}-${question.a}-${question.b}`,
+          checkpoint: checkpointIndex + 1,
+          task: `${question.a} × ${question.b}`,
+          correct: question.correct,
+          selected: answer,
+          mistakes: wrongAnswers.length,
+          wrongAnswers,
+          answerSeconds: elapsed,
+          boost,
+          speedBefore: speed,
+          speedAfter: nextSpeed,
+        },
+      ]);
+      continueRunning(nextSpeed);
       return;
     }
 
@@ -208,7 +323,7 @@ export default function App() {
   const isQuizOpen = phase === 'quiz';
   const progressLabel = `${Math.round(progress)}%`;
   const speedLabel = `${speed.toFixed(1)} m/s`;
-  const timeLabel = phase === 'finished' ? `${totalSeconds.toFixed(1)} s` : startedAt ? `${totalSeconds.toFixed(1)} s` : '0.0 s';
+  const timeLabel = phase === 'finished' ? formatSeconds(totalSeconds) : startedAt ? formatSeconds(totalSeconds) : '0.0 s';
 
   return (
     <main className="app-shell">
@@ -224,12 +339,12 @@ export default function App() {
             <span className="brand-mark">×</span>
             <div>
               <h1>MatheLäufer</h1>
-              <p>Kleines Einmaleins im Laufmodus</p>
+              <p>{selectedDifficulty.label} im Laufmodus</p>
             </div>
           </div>
           <div className="status-row">
             <StatusPill label="Tempo" value={speedLabel} />
-            <StatusPill label="Strecke" value={`${coveredMeters} m`} />
+            <StatusPill label="Strecke" value={`${coveredMeters}/${routeConfig.meters} m`} />
             <StatusPill label="Zeit" value={timeLabel} />
           </div>
         </header>
@@ -238,9 +353,9 @@ export default function App() {
           <div className="finish-flag" aria-hidden="true">
             Ziel
           </div>
-          <div className="track">
+          <div className="track" style={{ '--run-duration': `${runDurationMs}ms` }}>
             <div className="track-progress" style={{ width: progressLabel }} />
-            {CHECKPOINTS.map((checkpoint, index) => (
+            {checkpoints.map((checkpoint, index) => (
               <span
                 key={checkpoint}
                 className={`checkpoint ${index < checkpointIndex ? 'checkpoint--done' : ''}`}
@@ -264,8 +379,8 @@ export default function App() {
           <div className="feedback" aria-live="polite">
             {feedback}
           </div>
-          <button className="primary-action" type="button" onClick={startGame}>
-            {phase === 'ready' ? 'Start' : 'Neu starten'}
+          <button className="primary-action" type="button" onClick={phase === 'ready' ? startGame : resetToReady}>
+            {phase === 'ready' ? 'Start' : 'Runde einstellen'}
           </button>
         </footer>
       </section>
@@ -274,7 +389,7 @@ export default function App() {
         <section className="quiz-panel" aria-label="Matheaufgabe">
           <div className="quiz-card">
             <div className="quiz-meta">
-              <span>Stopp {checkpointIndex + 1} von {CHECKPOINTS.length}</span>
+              <span>Stopp {checkpointIndex + 1} von {checkpoints.length}</span>
               <strong>{nextCheckpoint}% der Strecke</strong>
             </div>
             <h2>
@@ -299,9 +414,69 @@ export default function App() {
 
       {phase === 'ready' && (
         <section className="start-panel" aria-label="Startbildschirm">
-          <div className="start-card">
-            <h2>Tippe schnell, laufe schneller.</h2>
-            <p>Der Läufer stoppt an den Markierungen. Richtige Antworten geben Tempo, falsche Antworten bremsen.</p>
+          <div className="start-card start-card--setup">
+            <div className="start-card-header">
+              <div>
+                <h2>Tippe schnell, laufe schneller.</h2>
+                <p>Der Läufer stoppt an den Markierungen. Richtige Antworten geben Tempo, falsche Antworten bremsen.</p>
+              </div>
+              <button
+                aria-label="Spielregeln anzeigen"
+                className="help-button"
+                type="button"
+                onClick={() => setIsRulesOpen(true)}
+              >
+                ?
+              </button>
+            </div>
+            <div className="setup-panel" aria-label="Rundeneinstellungen">
+              <div className="setup-group">
+                <span className="setup-label">Schwierigkeit</span>
+                <div className="segmented-control" role="group" aria-label="Schwierigkeit wählen">
+                  {DIFFICULTY_OPTIONS.map((option) => (
+                    <button
+                      className={`segment-button ${gameSettings.difficulty === option.id ? 'segment-button--active' : ''}`}
+                      key={option.id}
+                      type="button"
+                      onClick={() => updateSetting('difficulty', option.id)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="checkbox-row">
+                <input
+                  checked={gameSettings.skipEasyRows}
+                  type="checkbox"
+                  onChange={(event) => updateSetting('skipEasyRows', event.target.checked)}
+                />
+                <span>1er- und 2er-Reihe weglassen</span>
+              </label>
+
+              <div className="setup-group">
+                <span className="setup-label">Streckenlänge</span>
+                <div className="segmented-control segmented-control--routes" role="group" aria-label="Streckenlänge wählen">
+                  {ROUTE_OPTIONS.map((option) => (
+                    <button
+                      className={`segment-button ${gameSettings.routeLength === option.id ? 'segment-button--active' : ''}`}
+                      key={option.id}
+                      type="button"
+                      onClick={() => updateSetting('routeLength', option.id)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.meters} m · {option.stops} Stopps</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="settings-preview">
+                {factorRangeLabel}, {routeConfig.meters} m, {routeConfig.stops} Aufgaben
+              </p>
+            </div>
             <button className="primary-action primary-action--large" type="button" onClick={startGame}>
               Spiel starten
             </button>
@@ -309,14 +484,110 @@ export default function App() {
         </section>
       )}
 
+      {phase === 'ready' && isRulesOpen && (
+        <section className="rules-panel" aria-label="Spielregeln" aria-modal="true" role="dialog">
+          <div className="rules-card">
+            <div className="rules-header">
+              <h2>Spielregeln</h2>
+              <button
+                aria-label="Spielregeln schließen"
+                className="rules-close-button"
+                type="button"
+                onClick={() => setIsRulesOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <ol className="rules-list">
+              <li>Wähle Schwierigkeit, Zahlenreihen und Streckenlänge aus.</li>
+              <li>Der Läufer läuft automatisch bis zur nächsten Markierung.</li>
+              <li>An jedem Stopp erscheint eine Einmaleins-Aufgabe mit vier Antworten.</li>
+              <li>Bei einer richtigen Antwort läuft der Läufer weiter.</li>
+              <li>Schnelle richtige Antworten geben mehr Tempo.</li>
+              <li>Falsche Antworten bremsen den Läufer, du darfst aber weiter raten.</li>
+              <li>Am Ziel siehst du deine Rennzeit und eine Statistik zu allen Antworten.</li>
+            </ol>
+            <button className="primary-action" type="button" onClick={() => setIsRulesOpen(false)}>
+              Verstanden
+            </button>
+          </div>
+        </section>
+      )}
+
       {phase === 'finished' && (
         <section className="finish-panel" aria-label="Ziel erreicht">
-          <div className="finish-card">
-            <h2>Geschafft!</h2>
-            <p>Du bist die Strecke in {totalSeconds.toFixed(1)} Sekunden gelaufen.</p>
-            <button className="primary-action primary-action--large" type="button" onClick={startGame}>
-              Noch eine Runde
-            </button>
+          <div className="finish-card finish-card--summary">
+            <div className="finish-header">
+              <div>
+                <h2>Geschafft!</h2>
+                <p>Du bist die Strecke in {formatSeconds(totalSeconds)} gelaufen.</p>
+              </div>
+              <button className="primary-action primary-action--large" type="button" onClick={resetToReady}>
+                Neue Runde einstellen
+              </button>
+            </div>
+
+            <div className="summary-grid" aria-label="Rennstatistik">
+              <div className="summary-item">
+                <span>Modus</span>
+                <strong>{factorStart}-{selectedDifficulty.maxFactor} × {factorStart}-{selectedDifficulty.maxFactor}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Strecke</span>
+                <strong>{routeConfig.meters} m</strong>
+              </div>
+              <div className="summary-item">
+                <span>Aufgaben</span>
+                <strong>{raceSummary.answered}/{checkpoints.length}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Fehlversuche</span>
+                <strong>{raceSummary.totalMistakes}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Schnitt</span>
+                <strong>{formatSeconds(raceSummary.averageAnswerSeconds)}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Schnellste</span>
+                <strong>{formatSeconds(raceSummary.fastestAnswerSeconds)}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Bester Boost</span>
+                <strong>+{raceSummary.biggestBoost.toFixed(1)}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Top-Tempo</span>
+                <strong>{raceSummary.topSpeed.toFixed(1)} m/s</strong>
+              </div>
+            </div>
+
+            <div className="answer-review" aria-label="Antwortübersicht">
+              <h3>Antworten im Rennen</h3>
+              <div className="answer-review-list">
+                {answerStats.map((result) => (
+                  <article className="answer-review-row" key={result.id}>
+                    <div className="answer-review-task">
+                      <span>Stopp {result.checkpoint}</span>
+                      <strong>{result.task} = {result.correct}</strong>
+                    </div>
+                    <div className="answer-review-detail">
+                      <span>Zeit</span>
+                      <strong>{formatSeconds(result.answerSeconds)}</strong>
+                    </div>
+                    <div className="answer-review-detail">
+                      <span>Fehler</span>
+                      <strong>{result.mistakes}</strong>
+                    </div>
+                    <div className="answer-review-detail">
+                      <span>Tempo</span>
+                      <strong>{result.speedBefore.toFixed(1)} → {result.speedAfter.toFixed(1)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+
           </div>
         </section>
       )}
