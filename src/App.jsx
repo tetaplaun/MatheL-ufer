@@ -643,6 +643,7 @@ export default function App() {
   }
 
   const isQuizOpen = phase === 'quiz';
+  const isGameActive = phase === 'running' || phase === 'quiz' || phase === 'celebrating';
   const progressLabel = `${Math.round(progress)}%`;
   const speedLabel = `${speed.toFixed(1)} m/s`;
   const timeLabel = phase === 'finished' ? formatSeconds(totalSeconds) : startedAt ? formatSeconds(totalSeconds) : '0.0 s';
@@ -666,11 +667,13 @@ export default function App() {
               <p>{selectedDifficulty.label} im Laufmodus</p>
             </div>
           </div>
-          <div className="status-row">
-            <StatusPill label="Tempo" value={speedLabel} />
-            <StatusPill label="Strecke" value={`${coveredMeters}/${routeConfig.meters} m`} />
-            <StatusPill label="Zeit" value={timeLabel} />
-          </div>
+          {isGameActive && (
+            <div className="status-row">
+              <StatusPill label="Tempo" value={speedLabel} />
+              <StatusPill label="Strecke" value={`${coveredMeters}/${routeConfig.meters} m`} />
+              <StatusPill label="Zeit" value={timeLabel} />
+            </div>
+          )}
         </header>
 
         <div className="track-wrap">
