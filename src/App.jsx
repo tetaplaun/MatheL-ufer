@@ -255,15 +255,17 @@ function StatusPill({ label, value }) {
 
 export default function App() {
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
+  const [leaderboardSettings, setLeaderboardSettings] = useState(DEFAULT_SETTINGS);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isLeaderboardSettingsOpen, setIsLeaderboardSettingsOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState(() => loadLeaderboard());
   const [leaderboardStatus, setLeaderboardStatus] = useState(SUPABASE_ENABLED ? 'loading' : 'local');
   const [leaderboardError, setLeaderboardError] = useState('');
   const [playerName, setPlayerName] = useState(() => loadLastPlayerName());
   const [savedRaceId, setSavedRaceId] = useState(null);
   const [isSavingLeaderboard, setIsSavingLeaderboard] = useState(false);
-  const [phase, setPhase] = useState('ready');
+  const [phase, setPhase] = useState('home');
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(BASE_SPEED);
   const [checkpointIndex, setCheckpointIndex] = useState(0);
@@ -284,9 +286,15 @@ export default function App() {
 
   const selectedDifficulty = DIFFICULTY_OPTIONS.find((option) => option.id === gameSettings.difficulty) ?? DIFFICULTY_OPTIONS[0];
   const routeConfig = ROUTE_OPTIONS.find((option) => option.id === gameSettings.routeLength) ?? ROUTE_OPTIONS[1];
+  const leaderboardDifficulty =
+    DIFFICULTY_OPTIONS.find((option) => option.id === leaderboardSettings.difficulty) ?? DIFFICULTY_OPTIONS[0];
+  const leaderboardRouteConfig =
+    ROUTE_OPTIONS.find((option) => option.id === leaderboardSettings.routeLength) ?? ROUTE_OPTIONS[1];
   const checkpoints = useMemo(() => makeCheckpoints(routeConfig.stops), [routeConfig.stops]);
   const factorRangeLabel = formatFactorRange(gameSettings, selectedDifficulty.maxFactor);
+  const leaderboardFactorRangeLabel = formatFactorRange(leaderboardSettings, leaderboardDifficulty.maxFactor);
   const settingsKey = makeSettingsKey(gameSettings);
+  const leaderboardSettingsKey = makeSettingsKey(leaderboardSettings);
   const nextCheckpoint = checkpoints[checkpointIndex] ?? FINISH_PROGRESS;
   const coveredMeters = Math.round((progress / FINISH_PROGRESS) * routeConfig.meters);
   const totalSeconds = useMemo(() => {
@@ -313,7 +321,7 @@ export default function App() {
       topSpeed,
     };
   }, [answerStats]);
-  const currentLeaderboard = useMemo(
+  const raceLeaderboard = useMemo(
     () =>
       addLeaderboardRanks(
         leaderboardEntries
@@ -323,6 +331,16 @@ export default function App() {
       ),
     [leaderboardEntries, settingsKey],
   );
+  const selectedLeaderboard = useMemo(
+    () =>
+      addLeaderboardRanks(
+        leaderboardEntries
+          .filter((entry) => entry.settingsKey === leaderboardSettingsKey)
+          .sort(compareLeaderboardEntries)
+          .slice(0, LEADERBOARD_LIMIT),
+      ),
+    [leaderboardEntries, leaderboardSettingsKey],
+  );
 
   useEffect(() => {
     if (!SUPABASE_ENABLED) {
@@ -331,35 +349,44 @@ export default function App() {
     }
 
     let isCurrent = true;
+    const fetchKeys = [...new Set([settingsKey, leaderboardSettingsKey])];
     setLeaderboardStatus('loading');
     setLeaderboardError('');
 
-    loadSupabaseLeaderboard(settingsKey)
-      .then((remoteEntries) => {
+    Promise.allSettled(fetchKeys.map((key) => loadSupabaseLeaderboard(key).then((entries) => ({ key, entries }))))
+      .then((results) => {
         if (!isCurrent) {
           return;
         }
 
-        setLeaderboardEntries((entries) => {
-          const nextEntries = mergeLeaderboardEntries(entries, settingsKey, remoteEntries);
-          persistLocalLeaderboard(nextEntries);
-          return nextEntries;
-        });
+        const loadedResults = results
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => result.value);
+
+        if (loadedResults.length > 0) {
+          setLeaderboardEntries((entries) => {
+            const nextEntries = loadedResults.reduce(
+              (nextEntries, result) => mergeLeaderboardEntries(nextEntries, result.key, result.entries),
+              entries,
+            );
+            persistLocalLeaderboard(nextEntries);
+            return nextEntries;
+          });
+        }
+
+        if (results.some((result) => result.status === 'rejected')) {
+          setLeaderboardStatus('error');
+          setLeaderboardError('Supabase nicht erreichbar. Lokale Rangliste wird angezeigt.');
+          return;
+        }
+
         setLeaderboardStatus('online');
-      })
-      .catch(() => {
-        if (!isCurrent) {
-          return;
-        }
-
-        setLeaderboardStatus('error');
-        setLeaderboardError('Supabase nicht erreichbar. Lokale Rangliste wird angezeigt.');
       });
 
     return () => {
       isCurrent = false;
     };
-  }, [settingsKey]);
+  }, [settingsKey, leaderboardSettingsKey]);
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -427,6 +454,32 @@ export default function App() {
       ...settings,
       [key]: value,
     }));
+  }
+
+  function updateLeaderboardSetting(key, value) {
+    setLeaderboardSettings((settings) => ({
+      ...settings,
+      [key]: value,
+    }));
+  }
+
+  function openLeaderboard() {
+    setIsRulesOpen(false);
+    setLeaderboardSettings(gameSettings);
+    setIsLeaderboardOpen(true);
+    setIsLeaderboardSettingsOpen(false);
+  }
+
+  function closeLeaderboard() {
+    setIsLeaderboardOpen(false);
+    setIsLeaderboardSettingsOpen(false);
+  }
+
+  function openStartSettings() {
+    setIsRulesOpen(false);
+    closeLeaderboard();
+    setPhase('ready');
+    setFeedback('Wähle deine Runde.');
   }
 
   async function saveLeaderboardEntry(event) {
@@ -502,7 +555,7 @@ export default function App() {
     setQuestion(makeQuestion(gameSettings));
     setWrongAnswers([]);
     setRunnerState('standing');
-    setFeedback('Bereit?');
+    setFeedback('Wähle deine Runde.');
     setStartedAt(null);
     setFinishTime(null);
     setAnswerStats([]);
@@ -614,7 +667,6 @@ export default function App() {
 
         <header className="hud" aria-label="Spielstand">
           <div className="brand-lockup">
-            <span className="brand-mark">×</span>
             <div>
               <h1>MatheLäufer</h1>
               <p>{selectedDifficulty.label} im Laufmodus</p>
@@ -653,11 +705,22 @@ export default function App() {
           </div>
         </div>
 
+        {phase === 'home' && (
+          <div className="home-start">
+            <button className="primary-action home-start-button" type="button" onClick={openStartSettings}>
+              Spiel starten
+            </button>
+            <button className="secondary-action home-start-button" type="button" onClick={openLeaderboard}>
+              Rangliste
+            </button>
+          </div>
+        )}
+
         <footer className="control-strip">
           <div className="feedback" aria-live="polite">
             {feedback}
           </div>
-          {phase !== 'ready' && phase !== 'finished' && (
+          {phase !== 'home' && phase !== 'ready' && phase !== 'finished' && (
             <button className="primary-action" type="button" onClick={resetToReady}>
               Neu starten
             </button>
@@ -790,7 +853,7 @@ export default function App() {
               <button className="primary-action primary-action--large" type="button" onClick={startGame}>
                 Spiel starten
               </button>
-              <button className="secondary-action secondary-action--large" type="button" onClick={() => setIsLeaderboardOpen(true)}>
+              <button className="secondary-action secondary-action--large" type="button" onClick={openLeaderboard}>
                 Rangliste
               </button>
             </div>
@@ -828,13 +891,16 @@ export default function App() {
         </section>
       )}
 
-      {phase === 'ready' && isLeaderboardOpen && (
+      {(phase === 'home' || phase === 'ready') && isLeaderboardOpen && (
         <section className="leaderboard-panel" aria-label="Rangliste" aria-modal="true" role="dialog">
           <div className="leaderboard-card">
             <div className="leaderboard-header">
               <div>
                 <h2>Top 100 Rangliste</h2>
-                <p>{factorRangeLabel}, {routeConfig.meters} m, {gameSettings.answerCount} Antworten</p>
+                <p>
+                  {leaderboardDifficulty.label}, {leaderboardFactorRangeLabel}, {leaderboardRouteConfig.meters} m,{' '}
+                  {leaderboardSettings.answerCount} Antworten
+                </p>
               </div>
               <button
                 aria-label="Rangliste schließen"
@@ -845,12 +911,92 @@ export default function App() {
                 ×
               </button>
             </div>
+            <div className="leaderboard-filter" aria-label="Ranglistenmodus auswählen">
+              <div className="setup-group">
+                <span className="setup-label">Schwierigkeit</span>
+                <div className="segmented-control" role="group" aria-label="Schwierigkeit für Rangliste wählen">
+                  {DIFFICULTY_OPTIONS.map((option) => (
+                    <button
+                      className={`segment-button ${leaderboardSettings.difficulty === option.id ? 'segment-button--active' : ''}`}
+                      key={option.id}
+                      type="button"
+                      onClick={() => updateLeaderboardSetting('difficulty', option.id)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="checkbox-row">
+                <input
+                  checked={leaderboardSettings.skipEasyRows}
+                  type="checkbox"
+                  onChange={(event) => updateLeaderboardSetting('skipEasyRows', event.target.checked)}
+                />
+                <span>1er- und 2er-Reihe weglassen</span>
+              </label>
+
+              <label className="checkbox-row">
+                <input
+                  checked={leaderboardSettings.skipTenRow}
+                  type="checkbox"
+                  onChange={(event) => updateLeaderboardSetting('skipTenRow', event.target.checked)}
+                />
+                <span>10er-Reihe weglassen</span>
+              </label>
+
+              <div className="leaderboard-filter-grid">
+                <div className="setup-group">
+                  <span className="setup-label">Strecke</span>
+                  <div
+                    className="segmented-control segmented-control--routes"
+                    role="group"
+                    aria-label="Streckenlänge für Rangliste wählen"
+                  >
+                    {ROUTE_OPTIONS.map((option) => (
+                      <button
+                        className={`segment-button ${leaderboardSettings.routeLength === option.id ? 'segment-button--active' : ''}`}
+                        key={option.id}
+                        type="button"
+                        onClick={() => updateLeaderboardSetting('routeLength', option.id)}
+                      >
+                        <strong>{option.label}</strong>
+                        <span>{option.meters} m</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="setup-group">
+                  <span className="setup-label">Antworten</span>
+                  <div
+                    className="segmented-control segmented-control--answers"
+                    role="group"
+                    aria-label="Antwortanzahl für Rangliste wählen"
+                  >
+                    {ANSWER_COUNT_OPTIONS.map((count) => (
+                      <button
+                        className={`segment-button ${leaderboardSettings.answerCount === count ? 'segment-button--active' : ''}`}
+                        key={count}
+                        type="button"
+                        onClick={() => updateLeaderboardSetting('answerCount', count)}
+                      >
+                        <strong>{count}</strong>
+                        <span>Antworten</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
             <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
               {leaderboardStatusText}
             </p>
-            {currentLeaderboard.length > 0 ? (
+            {selectedLeaderboard.length > 0 ? (
               <ol className="leaderboard-list">
-                {currentLeaderboard.map((entry) => (
+                {selectedLeaderboard.map((entry) => (
                   <li className="leaderboard-row" key={entry.id}>
                     <span className="leaderboard-rank">{entry.rank}</span>
                     <strong>{entry.name}</strong>
@@ -943,9 +1089,9 @@ export default function App() {
               <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
                 {leaderboardStatusText}
               </p>
-              {currentLeaderboard.length > 0 ? (
+              {raceLeaderboard.length > 0 ? (
                 <ol className="leaderboard-list">
-                  {currentLeaderboard.map((entry) => (
+                  {raceLeaderboard.map((entry) => (
                     <li className="leaderboard-row" key={entry.id}>
                       <span className="leaderboard-rank">{entry.rank}</span>
                       <strong>{entry.name}</strong>
