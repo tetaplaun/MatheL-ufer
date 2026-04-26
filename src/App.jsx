@@ -61,6 +61,25 @@ const formatFactorRange = (settings, maxFactor) => {
 };
 const compareLeaderboardEntries = (a, b) =>
   a.totalSeconds - b.totalSeconds || a.mistakes - b.mistakes || a.averageAnswerSeconds - b.averageAnswerSeconds;
+const makeLeaderboardScoreKey = (entry) => `${Math.round(entry.totalSeconds * 10)}|${entry.mistakes}`;
+const addLeaderboardRanks = (entries) => {
+  let lastScoreKey = '';
+  let currentRank = 0;
+
+  return entries.map((entry, index) => {
+    const scoreKey = makeLeaderboardScoreKey(entry);
+
+    if (scoreKey !== lastScoreKey) {
+      currentRank = index + 1;
+      lastScoreKey = scoreKey;
+    }
+
+    return {
+      ...entry,
+      rank: currentRank,
+    };
+  });
+};
 const persistLocalLeaderboard = (entries) => {
   try {
     localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
@@ -292,10 +311,12 @@ export default function App() {
   }, [answerStats]);
   const currentLeaderboard = useMemo(
     () =>
-      leaderboardEntries
-        .filter((entry) => entry.settingsKey === settingsKey)
-        .sort(compareLeaderboardEntries)
-        .slice(0, 10),
+      addLeaderboardRanks(
+        leaderboardEntries
+          .filter((entry) => entry.settingsKey === settingsKey)
+          .sort(compareLeaderboardEntries)
+          .slice(0, 10),
+      ),
     [leaderboardEntries, settingsKey],
   );
 
@@ -824,9 +845,9 @@ export default function App() {
             </p>
             {currentLeaderboard.length > 0 ? (
               <ol className="leaderboard-list">
-                {currentLeaderboard.map((entry, index) => (
+                {currentLeaderboard.map((entry) => (
                   <li className="leaderboard-row" key={entry.id}>
-                    <span className="leaderboard-rank">{index + 1}</span>
+                    <span className="leaderboard-rank">{entry.rank}</span>
                     <strong>{entry.name}</strong>
                     <span>{formatSeconds(entry.totalSeconds)}</span>
                     <span>{entry.mistakes} Fehler</span>
@@ -919,9 +940,9 @@ export default function App() {
               </p>
               {currentLeaderboard.length > 0 ? (
                 <ol className="leaderboard-list">
-                  {currentLeaderboard.map((entry, index) => (
+                  {currentLeaderboard.map((entry) => (
                     <li className="leaderboard-row" key={entry.id}>
-                      <span className="leaderboard-rank">{index + 1}</span>
+                      <span className="leaderboard-rank">{entry.rank}</span>
                       <strong>{entry.name}</strong>
                       <span>{formatSeconds(entry.totalSeconds)}</span>
                       <span>{entry.mistakes} Fehler</span>
