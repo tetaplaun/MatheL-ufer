@@ -900,9 +900,7 @@ h1 {
   background: rgba(255, 255, 255, 0.58);
 }
 
-.summary-item span,
-.answer-review-task span,
-.answer-review-detail span {
+.summary-item span {
   color: #456776;
   font-size: 0.72rem;
   font-weight: 950;
@@ -1020,49 +1018,6 @@ h1 {
   color: #315665;
   font-size: 1rem;
   font-weight: 850;
-}
-
-.answer-review {
-  display: grid;
-  width: 100%;
-  gap: 10px;
-}
-
-.answer-review h3 {
-  margin: 0;
-  color: var(--ink);
-  font-size: clamp(1.2rem, 2.4vw, 1.55rem);
-}
-
-.answer-review-list {
-  display: grid;
-  gap: 8px;
-  width: 100%;
-}
-
-.answer-review-row {
-  display: grid;
-  align-items: center;
-  grid-template-columns: minmax(140px, 1.4fr) repeat(3, minmax(74px, 0.8fr));
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 2px solid rgba(22, 49, 61, 0.1);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.44);
-}
-
-.answer-review-task,
-.answer-review-detail {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.answer-review-task strong,
-.answer-review-detail strong {
-  color: var(--ink);
-  font-size: 1rem;
 }
 
 @media (orientation: portrait) {
@@ -1198,14 +1153,6 @@ h1 {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .answer-review-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .answer-review-task {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-height: 560px) and (orientation: landscape) {
@@ -1311,9 +1258,5 @@ h1 {
 
   .summary-item {
     padding: 8px 10px;
-  }
-
-  .answer-review-row {
-    padding: 7px 10px;
   }
 }

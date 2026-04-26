@@ -26,6 +26,7 @@ const BASE_SPEED = 5.2;
 const MAX_SPEED = 11.5;
 const FINISH_PROGRESS = 100;
 const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
+const LAST_PLAYER_NAME_KEY = 'mathelaeufer-last-player-name';
 const MAX_LEADERBOARD_ENTRIES = 100;
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -62,6 +63,13 @@ const loadLeaderboard = () => {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+};
+const loadLastPlayerName = () => {
+  try {
+    return localStorage.getItem(LAST_PLAYER_NAME_KEY) ?? '';
+  } catch {
+    return '';
   }
 };
 
@@ -143,7 +151,7 @@ export default function App() {
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState(() => loadLeaderboard());
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(() => loadLastPlayerName());
   const [savedRaceId, setSavedRaceId] = useState(null);
   const [phase, setPhase] = useState('ready');
   const [progress, setProgress] = useState(0);
@@ -279,9 +287,10 @@ export default function App() {
       return;
     }
 
+    const entryName = playerName.trim().slice(0, 18) || 'Spieler';
     const entry = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name: playerName.trim().slice(0, 18) || 'Spieler',
+      name: entryName,
       date: new Date().toISOString(),
       settings: { ...gameSettings },
       settingsKey,
@@ -307,6 +316,12 @@ export default function App() {
       }
       return nextEntries;
     });
+    try {
+      localStorage.setItem(LAST_PLAYER_NAME_KEY, entryName);
+    } catch {
+      // Keeping the current field value is enough if browser storage is unavailable.
+    }
+    setPlayerName(entryName);
     setSavedRaceId(finishTime);
   }
 
@@ -764,33 +779,6 @@ export default function App() {
                 <p className="empty-leaderboard">Speichere dein Rennen, um den ersten Eintrag anzulegen.</p>
               )}
             </div>
-
-            <div className="answer-review" aria-label="Antwortübersicht">
-              <h3>Antworten im Rennen</h3>
-              <div className="answer-review-list">
-                {answerStats.map((result) => (
-                  <article className="answer-review-row" key={result.id}>
-                    <div className="answer-review-task">
-                      <span>Stopp {result.checkpoint}</span>
-                      <strong>{result.task} = {result.correct}</strong>
-                    </div>
-                    <div className="answer-review-detail">
-                      <span>Zeit</span>
-                      <strong>{formatSeconds(result.answerSeconds)}</strong>
-                    </div>
-                    <div className="answer-review-detail">
-                      <span>Fehler</span>
-                      <strong>{result.mistakes}</strong>
-                    </div>
-                    <div className="answer-review-detail">
-                      <span>Tempo</span>
-                      <strong>{result.speedBefore.toFixed(1)} → {result.speedAfter.toFixed(1)}</strong>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
           </div>
         </section>
       )}
