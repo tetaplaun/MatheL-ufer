@@ -546,7 +546,7 @@ export default function App() {
     clearTimeout(runTimeoutRef.current);
     cancelAnimationFrame(animationRef.current);
     setIsRulesOpen(false);
-    setIsLeaderboardOpen(false);
+    closeLeaderboard();
     setRunDurationMs(0);
     setPhase('ready');
     setProgress(0);
@@ -568,7 +568,7 @@ export default function App() {
     clearTimeout(runTimeoutRef.current);
     cancelAnimationFrame(animationRef.current);
     setIsRulesOpen(false);
-    setIsLeaderboardOpen(false);
+    closeLeaderboard();
     setRunDurationMs(0);
     setPhase('running');
     setProgress(0);
@@ -647,14 +647,8 @@ export default function App() {
   const speedLabel = `${speed.toFixed(1)} m/s`;
   const timeLabel = phase === 'finished' ? formatSeconds(totalSeconds) : startedAt ? formatSeconds(totalSeconds) : '0.0 s';
   const hasSavedCurrentRace = finishTime !== null && savedRaceId === finishTime;
-  const leaderboardStatusText =
-    leaderboardStatus === 'loading'
-      ? 'Online-Rangliste wird geladen.'
-      : leaderboardStatus === 'online'
-        ? 'Online-Rangliste über Supabase.'
-        : leaderboardStatus === 'error'
-          ? leaderboardError
-          : 'Lokale Rangliste im Browser.';
+  const leaderboardSummaryText = `${leaderboardDifficulty.label}, ${leaderboardFactorRangeLabel}, ${leaderboardRouteConfig.meters} m, ${leaderboardSettings.answerCount} Antworten`;
+  const shouldShowLeaderboardStatus = leaderboardStatus === 'error' && leaderboardError;
 
   return (
     <main className="app-shell">
@@ -897,20 +891,75 @@ export default function App() {
             <div className="leaderboard-header">
               <div>
                 <h2>Top 100 Rangliste</h2>
-                <p>
-                  {leaderboardDifficulty.label}, {leaderboardFactorRangeLabel}, {leaderboardRouteConfig.meters} m,{' '}
-                  {leaderboardSettings.answerCount} Antworten
-                </p>
               </div>
               <button
                 aria-label="Rangliste schließen"
                 className="rules-close-button"
                 type="button"
-                onClick={() => setIsLeaderboardOpen(false)}
+                onClick={closeLeaderboard}
               >
                 ×
               </button>
             </div>
+            <div className="leaderboard-summary" aria-label="Gewählte Ranglistenoptionen">
+              <span>{leaderboardSummaryText}</span>
+              <button
+                className="secondary-action leaderboard-change-button"
+                type="button"
+                onClick={() => setIsLeaderboardSettingsOpen(true)}
+              >
+                Optionen ändern
+              </button>
+            </div>
+            {shouldShowLeaderboardStatus && (
+              <p className="leaderboard-status leaderboard-status--error" aria-live="polite">
+                {leaderboardError}
+              </p>
+            )}
+            {selectedLeaderboard.length > 0 ? (
+              <ol className="leaderboard-list">
+                {selectedLeaderboard.map((entry) => (
+                  <li className="leaderboard-row" key={entry.id}>
+                    <span className="leaderboard-rank">{entry.rank}</span>
+                    <strong>{entry.name}</strong>
+                    <span>{formatSeconds(entry.totalSeconds)}</span>
+                    <span>{entry.mistakes} Fehler</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="empty-leaderboard">Für diese Einstellung gibt es noch keinen Eintrag.</p>
+            )}
+            <button className="primary-action" type="button" onClick={closeLeaderboard}>
+              Schließen
+            </button>
+          </div>
+        </section>
+      )}
+
+      {(phase === 'home' || phase === 'ready') && isLeaderboardOpen && isLeaderboardSettingsOpen && (
+        <section
+          className="leaderboard-settings-panel"
+          aria-label="Ranglistenoptionen"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="leaderboard-settings-card">
+            <div className="leaderboard-header">
+              <div>
+                <h2>Rangliste wählen</h2>
+                <p>{leaderboardSummaryText}</p>
+              </div>
+              <button
+                aria-label="Ranglistenoptionen schließen"
+                className="rules-close-button"
+                type="button"
+                onClick={() => setIsLeaderboardSettingsOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
             <div className="leaderboard-filter" aria-label="Ranglistenmodus auswählen">
               <div className="setup-group">
                 <span className="setup-label">Schwierigkeit</span>
@@ -991,25 +1040,9 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
-              {leaderboardStatusText}
-            </p>
-            {selectedLeaderboard.length > 0 ? (
-              <ol className="leaderboard-list">
-                {selectedLeaderboard.map((entry) => (
-                  <li className="leaderboard-row" key={entry.id}>
-                    <span className="leaderboard-rank">{entry.rank}</span>
-                    <strong>{entry.name}</strong>
-                    <span>{formatSeconds(entry.totalSeconds)}</span>
-                    <span>{entry.mistakes} Fehler</span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="empty-leaderboard">Für diese Einstellung gibt es noch keinen Eintrag.</p>
-            )}
-            <button className="primary-action" type="button" onClick={() => setIsLeaderboardOpen(false)}>
-              Schließen
+
+            <button className="primary-action" type="button" onClick={() => setIsLeaderboardSettingsOpen(false)}>
+              Rangliste anzeigen
             </button>
           </div>
         </section>
@@ -1086,9 +1119,11 @@ export default function App() {
 
             <div className="leaderboard-preview" aria-label="Rangliste für diese Einstellung">
               <h3>Top 100 für diese Einstellung</h3>
-              <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
-                {leaderboardStatusText}
-              </p>
+              {shouldShowLeaderboardStatus && (
+                <p className="leaderboard-status leaderboard-status--error" aria-live="polite">
+                  {leaderboardError}
+                </p>
+              )}
               {raceLeaderboard.length > 0 ? (
                 <ol className="leaderboard-list">
                   {raceLeaderboard.map((entry) => (
