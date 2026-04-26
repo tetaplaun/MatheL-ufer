@@ -657,9 +657,11 @@ export default function App() {
           <div className="feedback" aria-live="polite">
             {feedback}
           </div>
-          <button className="primary-action" type="button" onClick={phase === 'ready' ? startGame : resetToReady}>
-            {phase === 'ready' ? 'Start' : 'Runde einstellen'}
-          </button>
+          {phase !== 'ready' && phase !== 'finished' && (
+            <button className="primary-action" type="button" onClick={resetToReady}>
+              Neu starten
+            </button>
+          )}
         </footer>
       </section>
 
@@ -876,7 +878,7 @@ export default function App() {
                 <p>Du bist die Strecke in {formatSeconds(totalSeconds)} gelaufen.</p>
               </div>
               <button className="primary-action primary-action--large" type="button" onClick={resetToReady}>
-                Neue Runde einstellen
+                Neu starten
               </button>
             </div>
 
