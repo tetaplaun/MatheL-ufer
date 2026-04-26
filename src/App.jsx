@@ -11,10 +11,14 @@ const ROUTE_OPTIONS = [
   { id: 'long', label: 'Lang', meters: 800, stops: 10 },
 ];
 
+const ANSWER_COUNT_OPTIONS = [4, 6, 8];
+
 const DEFAULT_SETTINGS = {
   difficulty: 'small',
   skipEasyRows: false,
+  skipTenRow: false,
   routeLength: 'medium',
+  answerCount: 4,
 };
 
 const MIN_SPEED = 2.2;
@@ -27,20 +31,33 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const formatSeconds = (seconds) => `${seconds.toFixed(1)} s`;
 const makeCheckpoints = (stops) =>
   Array.from({ length: stops }, (_, index) => Math.round(((index + 1) / (stops + 1)) * FINISH_PROGRESS));
+const makeFactorPool = (settings, maxFactor) => {
+  const minFactor = settings.skipEasyRows ? 3 : 1;
+  return Array.from({ length: maxFactor - minFactor + 1 }, (_, index) => minFactor + index).filter(
+    (factor) => !(settings.skipTenRow && factor === 10),
+  );
+};
+const pickFactor = (factors) => factors[randomInt(0, factors.length - 1)];
+const formatFactorRange = (settings, maxFactor) => {
+  const minFactor = settings.skipEasyRows ? 3 : 1;
+  const effectiveMax = settings.skipTenRow && maxFactor === 10 ? 9 : maxFactor;
+  const suffix = settings.skipTenRow && maxFactor > 10 ? ' ohne 10er' : '';
+  return `${minFactor}er bis ${effectiveMax}er Reihe${suffix}`;
+};
 
 function makeQuestion(settings) {
   const difficulty = DIFFICULTY_OPTIONS.find((option) => option.id === settings.difficulty) ?? DIFFICULTY_OPTIONS[0];
-  const minFactor = settings.skipEasyRows ? 3 : 1;
   const maxFactor = difficulty.maxFactor;
-  const a = randomInt(minFactor, maxFactor);
-  const b = randomInt(minFactor, maxFactor);
+  const factors = makeFactorPool(settings, maxFactor);
+  const a = pickFactor(factors);
+  const b = pickFactor(factors);
   const correct = a * b;
   const options = new Set([correct]);
 
-  while (options.size < 4) {
+  while (options.size < settings.answerCount) {
     const drift = randomInt(-(maxFactor + 4), maxFactor + 4);
     const nearby = correct + drift;
-    const tableLike = randomInt(minFactor, maxFactor) * randomInt(minFactor, maxFactor);
+    const tableLike = pickFactor(factors) * pickFactor(factors);
     const candidate = Math.random() > 0.45 ? nearby : tableLike;
 
     if (candidate > 0 && candidate !== correct) {
@@ -126,8 +143,7 @@ export default function App() {
   const selectedDifficulty = DIFFICULTY_OPTIONS.find((option) => option.id === gameSettings.difficulty) ?? DIFFICULTY_OPTIONS[0];
   const routeConfig = ROUTE_OPTIONS.find((option) => option.id === gameSettings.routeLength) ?? ROUTE_OPTIONS[1];
   const checkpoints = useMemo(() => makeCheckpoints(routeConfig.stops), [routeConfig.stops]);
-  const factorStart = gameSettings.skipEasyRows ? 3 : 1;
-  const factorRangeLabel = `${factorStart}er bis ${selectedDifficulty.maxFactor}er Reihe`;
+  const factorRangeLabel = formatFactorRange(gameSettings, selectedDifficulty.maxFactor);
   const nextCheckpoint = checkpoints[checkpointIndex] ?? FINISH_PROGRESS;
   const coveredMeters = Math.round((progress / FINISH_PROGRESS) * routeConfig.meters);
   const totalSeconds = useMemo(() => {
@@ -402,7 +418,10 @@ export default function App() {
                   type="button"
                   className={`answer-button ${wrongAnswers.includes(option) ? 'answer-button--wrong' : ''}`}
                   disabled={wrongAnswers.includes(option)}
-                  onClick={() => chooseAnswer(option)}
+                  onClick={(event) => {
+                    event.currentTarget.blur();
+                    chooseAnswer(option);
+                  }}
                 >
                   {option}
                 </button>
@@ -456,6 +475,15 @@ export default function App() {
                 <span>1er- und 2er-Reihe weglassen</span>
               </label>
 
+              <label className="checkbox-row">
+                <input
+                  checked={gameSettings.skipTenRow}
+                  type="checkbox"
+                  onChange={(event) => updateSetting('skipTenRow', event.target.checked)}
+                />
+                <span>10er-Reihe weglassen</span>
+              </label>
+
               <div className="setup-group">
                 <span className="setup-label">Streckenlänge</span>
                 <div className="segmented-control segmented-control--routes" role="group" aria-label="Streckenlänge wählen">
@@ -473,8 +501,25 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="setup-group">
+                <span className="setup-label">Antwortmöglichkeiten</span>
+                <div className="segmented-control segmented-control--answers" role="group" aria-label="Anzahl Antwortmöglichkeiten wählen">
+                  {ANSWER_COUNT_OPTIONS.map((count) => (
+                    <button
+                      className={`segment-button ${gameSettings.answerCount === count ? 'segment-button--active' : ''}`}
+                      key={count}
+                      type="button"
+                      onClick={() => updateSetting('answerCount', count)}
+                    >
+                      <strong>{count}</strong>
+                      <span>Antworten</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <p className="settings-preview">
-                {factorRangeLabel}, {routeConfig.meters} m, {routeConfig.stops} Aufgaben
+                {factorRangeLabel}, {routeConfig.meters} m, {routeConfig.stops} Aufgaben, {gameSettings.answerCount} Antworten
               </p>
             </div>
             <button className="primary-action primary-action--large" type="button" onClick={startGame}>
@@ -501,7 +546,7 @@ export default function App() {
             <ol className="rules-list">
               <li>Wähle Schwierigkeit, Zahlenreihen und Streckenlänge aus.</li>
               <li>Der Läufer läuft automatisch bis zur nächsten Markierung.</li>
-              <li>An jedem Stopp erscheint eine Einmaleins-Aufgabe mit vier Antworten.</li>
+              <li>An jedem Stopp erscheint eine Einmaleins-Aufgabe mit 4, 6 oder 8 Antworten.</li>
               <li>Bei einer richtigen Antwort läuft der Läufer weiter.</li>
               <li>Schnelle richtige Antworten geben mehr Tempo.</li>
               <li>Falsche Antworten bremsen den Läufer, du darfst aber weiter raten.</li>
@@ -530,7 +575,7 @@ export default function App() {
             <div className="summary-grid" aria-label="Rennstatistik">
               <div className="summary-item">
                 <span>Modus</span>
-                <strong>{factorStart}-{selectedDifficulty.maxFactor} × {factorStart}-{selectedDifficulty.maxFactor}</strong>
+                <strong>{factorRangeLabel}</strong>
               </div>
               <div className="summary-item">
                 <span>Strecke</span>
@@ -539,6 +584,10 @@ export default function App() {
               <div className="summary-item">
                 <span>Aufgaben</span>
                 <strong>{raceSummary.answered}/{checkpoints.length}</strong>
+              </div>
+              <div className="summary-item">
+                <span>Antworten</span>
+                <strong>{gameSettings.answerCount}</strong>
               </div>
               <div className="summary-item">
                 <span>Fehlversuche</span>

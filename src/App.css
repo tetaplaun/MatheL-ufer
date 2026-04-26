@@ -566,10 +566,16 @@ h1 {
   box-shadow: 0 8px 0 rgba(36, 127, 195, 0.22);
 }
 
-.answer-button:hover,
 .answer-button:focus-visible {
   outline: 4px solid rgba(255, 200, 61, 0.72);
   outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .answer-button:hover {
+    outline: 4px solid rgba(255, 200, 61, 0.72);
+    outline-offset: 2px;
+  }
 }
 
 .answer-button:active {
@@ -726,6 +732,10 @@ h1 {
 }
 
 .segmented-control--routes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.segmented-control--answers {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -996,7 +1006,8 @@ h1 {
   }
 
   .segmented-control,
-  .segmented-control--routes {
+  .segmented-control--routes,
+  .segmented-control--answers {
     grid-template-columns: 1fr;
   }
 
