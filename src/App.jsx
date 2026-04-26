@@ -25,6 +25,8 @@ const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
 const MAX_SPEED = 11.5;
 const FINISH_PROGRESS = 100;
+const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
+const MAX_LEADERBOARD_ENTRIES = 100;
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -38,11 +40,29 @@ const makeFactorPool = (settings, maxFactor) => {
   );
 };
 const pickFactor = (factors) => factors[randomInt(0, factors.length - 1)];
+const makeSettingsKey = (settings) =>
+  [
+    settings.difficulty,
+    settings.skipEasyRows ? 'ohne-1-2' : 'mit-1-2',
+    settings.skipTenRow ? 'ohne-10' : 'mit-10',
+    settings.routeLength,
+    `${settings.answerCount}-antworten`,
+  ].join('|');
 const formatFactorRange = (settings, maxFactor) => {
   const minFactor = settings.skipEasyRows ? 3 : 1;
   const effectiveMax = settings.skipTenRow && maxFactor === 10 ? 9 : maxFactor;
   const suffix = settings.skipTenRow && maxFactor > 10 ? ' ohne 10er' : '';
   return `${minFactor}er bis ${effectiveMax}er Reihe${suffix}`;
+};
+const compareLeaderboardEntries = (a, b) =>
+  a.totalSeconds - b.totalSeconds || a.mistakes - b.mistakes || a.averageAnswerSeconds - b.averageAnswerSeconds;
+const loadLeaderboard = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 };
 
 function makeQuestion(settings) {
@@ -121,6 +141,10 @@ function StatusPill({ label, value }) {
 export default function App() {
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [leaderboardEntries, setLeaderboardEntries] = useState(() => loadLeaderboard());
+  const [playerName, setPlayerName] = useState('');
+  const [savedRaceId, setSavedRaceId] = useState(null);
   const [phase, setPhase] = useState('ready');
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState(BASE_SPEED);
@@ -144,6 +168,7 @@ export default function App() {
   const routeConfig = ROUTE_OPTIONS.find((option) => option.id === gameSettings.routeLength) ?? ROUTE_OPTIONS[1];
   const checkpoints = useMemo(() => makeCheckpoints(routeConfig.stops), [routeConfig.stops]);
   const factorRangeLabel = formatFactorRange(gameSettings, selectedDifficulty.maxFactor);
+  const settingsKey = makeSettingsKey(gameSettings);
   const nextCheckpoint = checkpoints[checkpointIndex] ?? FINISH_PROGRESS;
   const coveredMeters = Math.round((progress / FINISH_PROGRESS) * routeConfig.meters);
   const totalSeconds = useMemo(() => {
@@ -170,6 +195,14 @@ export default function App() {
       topSpeed,
     };
   }, [answerStats]);
+  const currentLeaderboard = useMemo(
+    () =>
+      leaderboardEntries
+        .filter((entry) => entry.settingsKey === settingsKey)
+        .sort(compareLeaderboardEntries)
+        .slice(0, 10),
+    [leaderboardEntries, settingsKey],
+  );
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -239,11 +272,50 @@ export default function App() {
     }));
   }
 
+  function saveLeaderboardEntry(event) {
+    event.preventDefault();
+
+    if (phase !== 'finished' || !finishTime || savedRaceId === finishTime) {
+      return;
+    }
+
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: playerName.trim().slice(0, 18) || 'Spieler',
+      date: new Date().toISOString(),
+      settings: { ...gameSettings },
+      settingsKey,
+      difficultyLabel: selectedDifficulty.label,
+      factorRangeLabel,
+      routeLabel: routeConfig.label,
+      routeMeters: routeConfig.meters,
+      stops: routeConfig.stops,
+      answerCount: gameSettings.answerCount,
+      totalSeconds,
+      mistakes: raceSummary.totalMistakes,
+      averageAnswerSeconds: raceSummary.averageAnswerSeconds,
+      fastestAnswerSeconds: raceSummary.fastestAnswerSeconds,
+      topSpeed: raceSummary.topSpeed,
+    };
+
+    setLeaderboardEntries((entries) => {
+      const nextEntries = [...entries, entry].sort(compareLeaderboardEntries).slice(0, MAX_LEADERBOARD_ENTRIES);
+      try {
+        localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(nextEntries));
+      } catch {
+        // The in-memory list still updates if browser storage is unavailable.
+      }
+      return nextEntries;
+    });
+    setSavedRaceId(finishTime);
+  }
+
   function resetToReady() {
     clearTimeout(timeoutRef.current);
     clearTimeout(runTimeoutRef.current);
     cancelAnimationFrame(animationRef.current);
     setIsRulesOpen(false);
+    setIsLeaderboardOpen(false);
     setRunDurationMs(0);
     setPhase('ready');
     setProgress(0);
@@ -257,6 +329,7 @@ export default function App() {
     setFinishTime(null);
     setAnswerStats([]);
     setClockTick(0);
+    setSavedRaceId(null);
   }
 
   function startGame() {
@@ -264,6 +337,7 @@ export default function App() {
     clearTimeout(runTimeoutRef.current);
     cancelAnimationFrame(animationRef.current);
     setIsRulesOpen(false);
+    setIsLeaderboardOpen(false);
     setRunDurationMs(0);
     setPhase('running');
     setProgress(0);
@@ -277,6 +351,7 @@ export default function App() {
     setFinishTime(null);
     setAnswerStats([]);
     setClockTick(0);
+    setSavedRaceId(null);
   }
 
   function continueRunning(nextSpeed) {
@@ -340,6 +415,7 @@ export default function App() {
   const progressLabel = `${Math.round(progress)}%`;
   const speedLabel = `${speed.toFixed(1)} m/s`;
   const timeLabel = phase === 'finished' ? formatSeconds(totalSeconds) : startedAt ? formatSeconds(totalSeconds) : '0.0 s';
+  const hasSavedCurrentRace = finishTime !== null && savedRaceId === finishTime;
 
   return (
     <main className="app-shell">
@@ -522,9 +598,14 @@ export default function App() {
                 {factorRangeLabel}, {routeConfig.meters} m, {routeConfig.stops} Aufgaben, {gameSettings.answerCount} Antworten
               </p>
             </div>
-            <button className="primary-action primary-action--large" type="button" onClick={startGame}>
-              Spiel starten
-            </button>
+            <div className="start-actions">
+              <button className="primary-action primary-action--large" type="button" onClick={startGame}>
+                Spiel starten
+              </button>
+              <button className="secondary-action secondary-action--large" type="button" onClick={() => setIsLeaderboardOpen(true)}>
+                Rangliste
+              </button>
+            </div>
           </div>
         </section>
       )}
@@ -554,6 +635,44 @@ export default function App() {
             </ol>
             <button className="primary-action" type="button" onClick={() => setIsRulesOpen(false)}>
               Verstanden
+            </button>
+          </div>
+        </section>
+      )}
+
+      {phase === 'ready' && isLeaderboardOpen && (
+        <section className="leaderboard-panel" aria-label="Rangliste" aria-modal="true" role="dialog">
+          <div className="leaderboard-card">
+            <div className="leaderboard-header">
+              <div>
+                <h2>Rangliste</h2>
+                <p>{factorRangeLabel}, {routeConfig.meters} m, {gameSettings.answerCount} Antworten</p>
+              </div>
+              <button
+                aria-label="Rangliste schließen"
+                className="rules-close-button"
+                type="button"
+                onClick={() => setIsLeaderboardOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            {currentLeaderboard.length > 0 ? (
+              <ol className="leaderboard-list">
+                {currentLeaderboard.map((entry, index) => (
+                  <li className="leaderboard-row" key={entry.id}>
+                    <span className="leaderboard-rank">{index + 1}</span>
+                    <strong>{entry.name}</strong>
+                    <span>{formatSeconds(entry.totalSeconds)}</span>
+                    <span>{entry.mistakes} Fehler</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="empty-leaderboard">Für diese Einstellung gibt es noch keinen Eintrag.</p>
+            )}
+            <button className="primary-action" type="button" onClick={() => setIsLeaderboardOpen(false)}>
+              Schließen
             </button>
           </div>
         </section>
@@ -609,6 +728,41 @@ export default function App() {
                 <span>Top-Tempo</span>
                 <strong>{raceSummary.topSpeed.toFixed(1)} m/s</strong>
               </div>
+            </div>
+
+            <form className="leaderboard-save" onSubmit={saveLeaderboardEntry}>
+              <label>
+                <span>Name für Rangliste</span>
+                <input
+                  disabled={hasSavedCurrentRace}
+                  maxLength="18"
+                  placeholder="Name"
+                  type="text"
+                  value={playerName}
+                  onChange={(event) => setPlayerName(event.target.value)}
+                />
+              </label>
+              <button className="secondary-action" disabled={hasSavedCurrentRace} type="submit">
+                {hasSavedCurrentRace ? 'Gespeichert' : 'Eintragen'}
+              </button>
+            </form>
+
+            <div className="leaderboard-preview" aria-label="Rangliste für diese Einstellung">
+              <h3>Rangliste für diese Einstellung</h3>
+              {currentLeaderboard.length > 0 ? (
+                <ol className="leaderboard-list">
+                  {currentLeaderboard.map((entry, index) => (
+                    <li className="leaderboard-row" key={entry.id}>
+                      <span className="leaderboard-rank">{index + 1}</span>
+                      <strong>{entry.name}</strong>
+                      <span>{formatSeconds(entry.totalSeconds)}</span>
+                      <span>{entry.mistakes} Fehler</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="empty-leaderboard">Speichere dein Rennen, um den ersten Eintrag anzulegen.</p>
+              )}
             </div>
 
             <div className="answer-review" aria-label="Antwortübersicht">

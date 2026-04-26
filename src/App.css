@@ -459,6 +459,7 @@ h1 {
 }
 
 .primary-action,
+.secondary-action,
 .answer-button {
   min-height: 52px;
   border: 0;
@@ -491,10 +492,32 @@ h1 {
   font-size: 1.18rem;
 }
 
+.secondary-action {
+  min-width: 132px;
+  padding: 0 18px;
+  border: 3px solid rgba(22, 49, 61, 0.14);
+  border-radius: 12px;
+  background: #fff8df;
+  color: var(--ink);
+  box-shadow: 0 6px 0 rgba(36, 127, 195, 0.22);
+}
+
+.secondary-action:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.secondary-action--large {
+  min-width: 160px;
+  min-height: 62px;
+  font-size: 1.08rem;
+}
+
 .quiz-panel,
 .start-panel,
 .finish-panel,
-.rules-panel {
+.rules-panel,
+.leaderboard-panel {
   position: fixed;
   z-index: 20;
   inset: 0;
@@ -510,14 +533,16 @@ h1 {
   background: rgba(17, 55, 60, 0.12);
 }
 
-.rules-panel {
+.rules-panel,
+.leaderboard-panel {
   z-index: 30;
 }
 
 .quiz-card,
 .start-card,
 .finish-card,
-.rules-card {
+.rules-card,
+.leaderboard-card {
   width: min(760px, 100%);
   border: 4px solid rgba(22, 49, 61, 0.18);
   border-radius: 18px;
@@ -621,6 +646,12 @@ h1 {
   gap: 16px;
 }
 
+.start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .help-button,
 .rules-close-button {
   display: grid;
@@ -661,7 +692,17 @@ h1 {
   padding: clamp(22px, 4vw, 34px);
 }
 
-.rules-header {
+.leaderboard-card {
+  display: grid;
+  gap: 16px;
+  max-width: 660px;
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.rules-header,
+.leaderboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -669,10 +710,18 @@ h1 {
   gap: 16px;
 }
 
-.rules-header h2 {
+.rules-header h2,
+.leaderboard-header h2 {
   color: var(--ink);
   font-size: clamp(2rem, 5vw, 3rem);
   line-height: 1;
+}
+
+.leaderboard-header p {
+  margin-top: 6px;
+  color: #315665;
+  font-size: 1rem;
+  font-weight: 850;
 }
 
 .rules-close-button {
@@ -865,6 +914,114 @@ h1 {
   font-size: clamp(1.08rem, 2.2vw, 1.42rem);
 }
 
+.leaderboard-save {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 2px solid rgba(22, 49, 61, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.leaderboard-save label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.leaderboard-save span {
+  color: #456776;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.leaderboard-save input {
+  width: 100%;
+  min-height: 48px;
+  border: 3px solid rgba(22, 49, 61, 0.14);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.leaderboard-save input:focus-visible {
+  border-color: #247fc3;
+  outline: 3px solid rgba(255, 200, 61, 0.52);
+}
+
+.leaderboard-preview,
+.leaderboard-list {
+  width: 100%;
+}
+
+.leaderboard-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.leaderboard-preview h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.2rem, 2.4vw, 1.55rem);
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 38px minmax(90px, 1fr) minmax(72px, auto) minmax(72px, auto);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid rgba(22, 49, 61, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #315665;
+  font-weight: 850;
+}
+
+.leaderboard-row strong {
+  min-width: 0;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-rank {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dff2ff;
+  color: #247fc3;
+  font-weight: 950;
+}
+
+.empty-leaderboard {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 200, 61, 0.22);
+  color: #315665;
+  font-size: 1rem;
+  font-weight: 850;
+}
+
 .answer-review {
   display: grid;
   width: 100%;
@@ -992,8 +1149,26 @@ h1 {
   .quiz-card,
   .start-card,
   .finish-card,
-  .rules-card {
+  .rules-card,
+  .leaderboard-card {
     border-radius: 14px;
+  }
+
+  .leaderboard-save {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-save .secondary-action {
+    width: 100%;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .leaderboard-row span:nth-child(3),
+  .leaderboard-row span:nth-child(4) {
+    grid-column: 2;
   }
 
   .start-card-header {
@@ -1102,9 +1277,19 @@ h1 {
     padding: 14px;
   }
 
-  .rules-card {
+  .rules-card,
+  .leaderboard-card {
     gap: 10px;
     padding: 14px;
+  }
+
+  .leaderboard-save {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .leaderboard-row {
+    padding: 7px 10px;
   }
 
   .rules-list {
