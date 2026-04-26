@@ -27,11 +27,11 @@ const MAX_SPEED = 11.5;
 const FINISH_PROGRESS = 100;
 const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
 const LAST_PLAYER_NAME_KEY = 'mathelaeufer-last-player-name';
-const MAX_LEADERBOARD_ENTRIES = 100;
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 const SUPABASE_LEADERBOARD_TABLE = 'leaderboard_entries';
 const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const LEADERBOARD_LIMIT = 100;
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -80,6 +80,10 @@ const addLeaderboardRanks = (entries) => {
     };
   });
 };
+const mergeLeaderboardEntries = (entries, settingsKey, nextSettingEntries) => [
+  ...entries.filter((entry) => entry.settingsKey !== settingsKey),
+  ...nextSettingEntries.sort(compareLeaderboardEntries).slice(0, LEADERBOARD_LIMIT),
+];
 const persistLocalLeaderboard = (entries) => {
   try {
     localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
@@ -144,7 +148,7 @@ const loadSupabaseLeaderboard = async (settingsKey) => {
       'id,player_name,settings_key,difficulty_label,factor_range_label,route_label,route_meters,stops,answer_count,total_seconds,mistakes,average_answer_seconds,fastest_answer_seconds,top_speed,created_at',
     settings_key: `eq.${settingsKey}`,
     order: 'total_seconds.asc,mistakes.asc,average_answer_seconds.asc',
-    limit: '10',
+    limit: String(LEADERBOARD_LIMIT),
   });
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}?${params.toString()}`, {
     headers: supabaseHeaders(),
@@ -155,7 +159,7 @@ const loadSupabaseLeaderboard = async (settingsKey) => {
   }
 
   const rows = await response.json();
-  return Array.isArray(rows) ? rows.map(mapSupabaseEntry) : [];
+  return rows.map(mapSupabaseEntry);
 };
 const saveSupabaseLeaderboardEntry = async (entry) => {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}`, {
@@ -315,7 +319,7 @@ export default function App() {
         leaderboardEntries
           .filter((entry) => entry.settingsKey === settingsKey)
           .sort(compareLeaderboardEntries)
-          .slice(0, 10),
+          .slice(0, LEADERBOARD_LIMIT),
       ),
     [leaderboardEntries, settingsKey],
   );
@@ -337,9 +341,7 @@ export default function App() {
         }
 
         setLeaderboardEntries((entries) => {
-          const nextEntries = [...entries.filter((entry) => entry.settingsKey !== settingsKey), ...remoteEntries]
-            .sort(compareLeaderboardEntries)
-            .slice(0, MAX_LEADERBOARD_ENTRIES);
+          const nextEntries = mergeLeaderboardEntries(entries, settingsKey, remoteEntries);
           persistLocalLeaderboard(nextEntries);
           return nextEntries;
         });
@@ -471,7 +473,8 @@ export default function App() {
     }
 
     setLeaderboardEntries((entries) => {
-      const nextEntries = [...entries, savedEntry].sort(compareLeaderboardEntries).slice(0, MAX_LEADERBOARD_ENTRIES);
+      const settingEntries = [...entries.filter((entry) => entry.settingsKey === settingsKey), savedEntry];
+      const nextEntries = mergeLeaderboardEntries(entries, settingsKey, settingEntries);
       persistLocalLeaderboard(nextEntries);
       return nextEntries;
     });
@@ -828,7 +831,7 @@ export default function App() {
           <div className="leaderboard-card">
             <div className="leaderboard-header">
               <div>
-                <h2>Rangliste</h2>
+                <h2>Top 100 Rangliste</h2>
                 <p>{factorRangeLabel}, {routeConfig.meters} m, {gameSettings.answerCount} Antworten</p>
               </div>
               <button
@@ -934,7 +937,7 @@ export default function App() {
             </form>
 
             <div className="leaderboard-preview" aria-label="Rangliste für diese Einstellung">
-              <h3>Rangliste für diese Einstellung</h3>
+              <h3>Top 100 für diese Einstellung</h3>
               <p className={`leaderboard-status leaderboard-status--${leaderboardStatus}`} aria-live="polite">
                 {leaderboardStatusText}
               </p>
