@@ -1,6 +1,15 @@
 node_modules/
-dist/
-.vite/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Test artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
+coverage/
 
 *.log
 npm-debug.log*

@@ -4,8 +4,8 @@
 
 const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
 const LAST_PLAYER_NAME_KEY = 'mathelaeufer-last-player-name';
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/$/, '');
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 const SUPABASE_LEADERBOARD_TABLE = 'leaderboard_entries';
 
 export const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
