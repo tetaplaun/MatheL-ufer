@@ -1,306 +1,37 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-
-const DIFFICULTY_OPTIONS = [
-  { id: 'small', label: 'Kleines Einmaleins', maxFactor: 10, description: 'bis 10 × 10' },
-  { id: 'large', label: 'Großes Einmaleins', maxFactor: 20, description: 'bis 20 × 20' },
-];
-
-const ROUTE_OPTIONS = [
-  { id: 'short', label: 'Kurz', meters: 300, stops: 5 },
-  { id: 'medium', label: 'Mittel', meters: 500, stops: 7 },
-  { id: 'long', label: 'Lang', meters: 800, stops: 10 },
-];
-
-const ANSWER_COUNT_OPTIONS = [4, 6, 8];
-
-const DEFAULT_SETTINGS = {
-  difficulty: 'small',
-  skipEasyRows: false,
-  skipTenRow: false,
-  routeLength: 'medium',
-  answerCount: 4,
-};
+import {
+  ANSWER_COUNT_OPTIONS,
+  DEFAULT_SETTINGS,
+  DIFFICULTY_OPTIONS,
+  FINISH_PROGRESS,
+  ROUTE_OPTIONS,
+  clamp,
+  formatFactorRange,
+  formatSeconds,
+  makeCheckpoints,
+  makeQuestion,
+  makeSettingsKey,
+} from './lib/engine.js';
+import { ConfettiBurst, makeConfettiPieces } from './components/ConfettiBurst.jsx';
+import { Runner } from './components/Runner.jsx';
+import { StatusPill } from './components/StatusPill.jsx';
+import {
+  LEADERBOARD_LIMIT,
+  SUPABASE_ENABLED,
+  addLeaderboardRanks,
+  compareLeaderboardEntries,
+  loadLastPlayerName,
+  loadLeaderboard,
+  loadSupabaseLeaderboard,
+  mergeLeaderboardEntries,
+  persistLocalLeaderboard,
+  saveLastPlayerName,
+  saveSupabaseLeaderboardEntry,
+} from './lib/leaderboard.js';
 
 const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
 const MAX_SPEED = 11.5;
-const FINISH_PROGRESS = 100;
-const LEADERBOARD_KEY = 'mathelaeufer-leaderboard';
-const LAST_PLAYER_NAME_KEY = 'mathelaeufer-last-player-name';
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '');
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
-const SUPABASE_LEADERBOARD_TABLE = 'leaderboard_entries';
-const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-const LEADERBOARD_LIMIT = 100;
-const CONFETTI_COLORS = ['#e9493e', '#ffc83d', '#247fc3', '#2f9b61', '#ff7a59', '#8ed1fc', '#ff9f1c', '#9b5de5'];
-const CONFETTI_COUNT = 180;
-const makeConfettiPieces = () =>
-  Array.from({ length: CONFETTI_COUNT }, (_, index) => {
-    const size = 7 + Math.random() * 10;
-    const shape = index % 7 === 0 ? 'dot' : index % 3 === 0 ? 'ribbon' : 'paper';
-    const width = shape === 'ribbon' ? size * 0.55 : size;
-    const height = shape === 'dot' ? size : shape === 'ribbon' ? size * 2.2 : size * 1.45;
-
-    return {
-      id: index,
-      startX: 3 + Math.random() * 94,
-      startY: 14 + Math.random() * 56,
-      x: -180 + Math.random() * 360,
-      y: -220 + Math.random() * 500,
-      rotation: -620 + Math.random() * 1240,
-      delay: Math.random() * 0.22,
-      duration: 1050 + Math.random() * 650,
-      width,
-      height,
-      color: CONFETTI_COLORS[randomInt(0, CONFETTI_COLORS.length - 1)],
-      shape,
-    };
-  });
-
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const formatSeconds = (seconds) => `${seconds.toFixed(1)} s`;
-const makeCheckpoints = (stops) =>
-  Array.from({ length: stops }, (_, index) => Math.round(((index + 1) / (stops + 1)) * FINISH_PROGRESS));
-const makeFactorPool = (settings, maxFactor) => {
-  const minFactor = settings.skipEasyRows ? 3 : 1;
-  return Array.from({ length: maxFactor - minFactor + 1 }, (_, index) => minFactor + index).filter(
-    (factor) => !(settings.skipTenRow && factor === 10),
-  );
-};
-const pickFactor = (factors) => factors[randomInt(0, factors.length - 1)];
-const makeSettingsKey = (settings) =>
-  [
-    settings.difficulty,
-    settings.skipEasyRows ? 'ohne-1-2' : 'mit-1-2',
-    settings.skipTenRow ? 'ohne-10' : 'mit-10',
-    settings.routeLength,
-    `${settings.answerCount}-antworten`,
-  ].join('|');
-const formatFactorRange = (settings, maxFactor) => {
-  const minFactor = settings.skipEasyRows ? 3 : 1;
-  const effectiveMax = settings.skipTenRow && maxFactor === 10 ? 9 : maxFactor;
-  const suffix = settings.skipTenRow && maxFactor > 10 ? ' ohne 10er' : '';
-  return `${minFactor}er bis ${effectiveMax}er Reihe${suffix}`;
-};
-const compareLeaderboardEntries = (a, b) =>
-  a.totalSeconds - b.totalSeconds || a.mistakes - b.mistakes || a.averageAnswerSeconds - b.averageAnswerSeconds;
-const makeLeaderboardScoreKey = (entry) => `${Math.round(entry.totalSeconds * 10)}|${entry.mistakes}`;
-const addLeaderboardRanks = (entries) => {
-  let lastScoreKey = '';
-  let currentRank = 0;
-
-  return entries.map((entry, index) => {
-    const scoreKey = makeLeaderboardScoreKey(entry);
-
-    if (scoreKey !== lastScoreKey) {
-      currentRank = index + 1;
-      lastScoreKey = scoreKey;
-    }
-
-    return {
-      ...entry,
-      rank: currentRank,
-    };
-  });
-};
-const mergeLeaderboardEntries = (entries, settingsKey, nextSettingEntries) => [
-  ...entries.filter((entry) => entry.settingsKey !== settingsKey),
-  ...nextSettingEntries.sort(compareLeaderboardEntries).slice(0, LEADERBOARD_LIMIT),
-];
-const persistLocalLeaderboard = (entries) => {
-  try {
-    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(entries));
-  } catch {
-    // The in-memory list still updates if browser storage is unavailable.
-  }
-};
-const loadLeaderboard = () => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(LEADERBOARD_KEY) ?? '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-const loadLastPlayerName = () => {
-  try {
-    return localStorage.getItem(LAST_PLAYER_NAME_KEY) ?? '';
-  } catch {
-    return '';
-  }
-};
-const supabaseHeaders = () => ({
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-});
-const mapSupabaseEntry = (row) => ({
-  id: row.id,
-  name: row.player_name,
-  date: row.created_at,
-  settingsKey: row.settings_key,
-  difficultyLabel: row.difficulty_label,
-  factorRangeLabel: row.factor_range_label,
-  routeLabel: row.route_label,
-  routeMeters: Number(row.route_meters) || 0,
-  stops: Number(row.stops) || 0,
-  answerCount: Number(row.answer_count) || 0,
-  totalSeconds: Number(row.total_seconds) || 0,
-  mistakes: Number(row.mistakes) || 0,
-  averageAnswerSeconds: Number(row.average_answer_seconds) || 0,
-  fastestAnswerSeconds: Number(row.fastest_answer_seconds) || 0,
-  topSpeed: Number(row.top_speed) || 0,
-});
-const mapEntryToSupabase = (entry) => ({
-  player_name: entry.name,
-  settings_key: entry.settingsKey,
-  difficulty_label: entry.difficultyLabel,
-  factor_range_label: entry.factorRangeLabel,
-  route_label: entry.routeLabel,
-  route_meters: entry.routeMeters,
-  stops: entry.stops,
-  answer_count: entry.answerCount,
-  total_seconds: entry.totalSeconds,
-  mistakes: entry.mistakes,
-  average_answer_seconds: entry.averageAnswerSeconds,
-  fastest_answer_seconds: entry.fastestAnswerSeconds,
-  top_speed: entry.topSpeed,
-});
-const loadSupabaseLeaderboard = async (settingsKey) => {
-  const params = new URLSearchParams({
-    select:
-      'id,player_name,settings_key,difficulty_label,factor_range_label,route_label,route_meters,stops,answer_count,total_seconds,mistakes,average_answer_seconds,fastest_answer_seconds,top_speed,created_at',
-    settings_key: `eq.${settingsKey}`,
-    order: 'total_seconds.asc,mistakes.asc,average_answer_seconds.asc',
-    limit: String(LEADERBOARD_LIMIT),
-  });
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}?${params.toString()}`, {
-    headers: supabaseHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error('Supabase leaderboard could not be loaded.');
-  }
-
-  const rows = await response.json();
-  return rows.map(mapSupabaseEntry);
-};
-const saveSupabaseLeaderboardEntry = async (entry) => {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_LEADERBOARD_TABLE}`, {
-    method: 'POST',
-    headers: {
-      ...supabaseHeaders(),
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-    body: JSON.stringify(mapEntryToSupabase(entry)),
-  });
-
-  if (!response.ok) {
-    throw new Error('Supabase leaderboard entry could not be saved.');
-  }
-
-  const rows = await response.json();
-  return Array.isArray(rows) && rows[0] ? mapSupabaseEntry(rows[0]) : entry;
-};
-
-function makeQuestion(settings) {
-  const difficulty = DIFFICULTY_OPTIONS.find((option) => option.id === settings.difficulty) ?? DIFFICULTY_OPTIONS[0];
-  const maxFactor = difficulty.maxFactor;
-  const factors = makeFactorPool(settings, maxFactor);
-  const a = pickFactor(factors);
-  const b = pickFactor(factors);
-  const correct = a * b;
-  const options = new Set([correct]);
-
-  while (options.size < settings.answerCount) {
-    const drift = randomInt(-(maxFactor + 4), maxFactor + 4);
-    const nearby = correct + drift;
-    const tableLike = pickFactor(factors) * pickFactor(factors);
-    const candidate = Math.random() > 0.45 ? nearby : tableLike;
-
-    if (candidate > 0 && candidate !== correct) {
-      options.add(candidate);
-    }
-  }
-
-  return {
-    a,
-    b,
-    correct,
-    options: [...options].sort(() => Math.random() - 0.5),
-  };
-}
-
-function Runner({ progress, state }) {
-  const isCheering = state === 'cheering';
-
-  return (
-    <div
-      className={`runner runner--${state}`}
-      style={{ left: `clamp(18px, ${progress}%, calc(100% - 86px))` }}
-      aria-label={`Läufer ${state}`}
-    >
-      <svg viewBox="0 0 96 112" role="img" aria-hidden="true">
-        <g className="runner-shadow">
-          <ellipse cx="48" cy="103" rx="27" ry="6" />
-        </g>
-        <g className="runner-body">
-          <circle className="skin" cx="48" cy="22" r="15" />
-          <path className="hair" d="M34 19c4-13 25-14 30 0-9-5-19-6-30 0Z" />
-          <circle className="eye" cx="43" cy="21" r="2.1" />
-          <circle className="eye" cx="54" cy="21" r="2.1" />
-          <path className="mouth mouth-smile" d="M42 29c4 5 10 5 14 0" />
-          <path className="mouth mouth-sad" d="M42 31c4-4 10-4 14 0" />
-          <path className="torso" d="M35 42c7-8 20-8 27 0l-4 31H39L35 42Z" />
-          <path className="bib" d="M43 47h11l2 15H41l2-15Z" />
-          <path className="arm arm-left" d={isCheering ? 'M37 48 25 25' : 'M37 48 22 62'} />
-          <path className="arm arm-right" d={isCheering ? 'M59 48 73 24' : 'M59 48 77 56'} />
-          <path className="leg leg-left" d="M43 72 29 93" />
-          <path className="leg leg-right" d="M55 72 71 92" />
-          <circle className="shoe" cx="28" cy="94" r="5" />
-          <circle className="shoe" cx="72" cy="93" r="5" />
-          <path className="spark spark-left" d="M26 33 14 27M27 40l-14 2" />
-          <path className="spark spark-right" d="M69 34 82 27M70 41l13 4" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function StatusPill({ label, value }) {
-  return (
-    <div className="status-pill">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function ConfettiBurst({ pieces }) {
-  return (
-    <div className="confetti-burst" aria-hidden="true">
-      {pieces.map((piece) => (
-        <span
-          className={`confetti-piece confetti-piece--${piece.shape}`}
-          key={piece.id}
-          style={{
-            '--confetti-color': piece.color,
-            '--confetti-delay': `${piece.delay}s`,
-            '--confetti-duration': `${piece.duration}ms`,
-            '--confetti-height': `${piece.height}px`,
-            '--confetti-rotation': `${piece.rotation}deg`,
-            '--confetti-start-x': `${piece.startX}%`,
-            '--confetti-start-y': `${piece.startY}%`,
-            '--confetti-width': `${piece.width}px`,
-            '--confetti-x': `${piece.x}px`,
-            '--confetti-y': `${piece.y}px`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function App() {
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
@@ -582,11 +313,7 @@ export default function App() {
       persistLocalLeaderboard(nextEntries);
       return nextEntries;
     });
-    try {
-      localStorage.setItem(LAST_PLAYER_NAME_KEY, entryName);
-    } catch {
-      // Keeping the current field value is enough if browser storage is unavailable.
-    }
+    saveLastPlayerName(entryName);
     setPlayerName(entryName);
     setSavedRaceId(finishTime);
     setIsSavingLeaderboard(false);
