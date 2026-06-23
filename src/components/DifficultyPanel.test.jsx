@@ -47,6 +47,29 @@ describe('DifficultyPanel', () => {
     expect(screen.queryByText('Antwortmöglichkeiten')).not.toBeInTheDocument();
   });
 
+  it('renders operation controls only when requested and prevents disabling the last operation', () => {
+    const onChange = vi.fn();
+    render(
+      <DifficultyPanel
+        settings={{ ...DEFAULT_SETTINGS, operations: { add: true, subtract: false, multiply: false, divide: false } }}
+        onChange={onChange}
+        fields={['operations']}
+      />,
+    );
+
+    expect(screen.getByText('Rechenarten')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Plus/));
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText(/Minus/));
+    expect(onChange).toHaveBeenCalledWith('operations', {
+      add: true,
+      subtract: true,
+      multiply: false,
+      divide: false,
+    });
+  });
+
   it('renders children below the controls', () => {
     render(
       <DifficultyPanel settings={DEFAULT_SETTINGS} onChange={() => {}}>

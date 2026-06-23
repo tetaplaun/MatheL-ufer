@@ -470,3 +470,34 @@ The best next mixed-operation path is:
 5. Implement **Roboter-Programm**.
 
 This sequence proves the four important new math modes: operation choice, integer division, error analysis, and multi-step arithmetic.
+
+## 9. Implementation Status
+
+Implemented in the first build pass:
+
+- Shared operation settings in the mini-game settings panel.
+- `makeMixedGameScoreKey(...)` so local scores include the enabled operation set.
+- Mixed-operation question helpers:
+  - `makeOperationQuestion`
+  - `makeMissingOperatorQuestion`
+  - `makeMissingOperandQuestion`
+  - `makeIntegerDivisionQuestion`
+  - `makeEquationCheckQuestion`
+  - `makeSharingQuestion`
+- Unit tests for operation filtering, integer-only division, no negative subtraction by default, and unique answer options.
+- Playable games:
+  - **Rechen-Detektiv**
+  - **Bruchfreie Teilerei**
+  - **Fehler-Fabrik**
+  - **Roboter-Programm**
+
+Still planning-only:
+
+- Zahlen-Waage
+- Kassen-Chaos
+- Schatz-Koordinaten
+- Rechen-Domino
+- Rechen-Radar
+- Zahlen-Zauberstab
+- Zahlen-Labor
+- Zahlen-Baumeister

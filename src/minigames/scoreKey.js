@@ -8,6 +8,8 @@
 
 // The games whose difficulty genuinely depends on route length. Only these
 // include `routeLength` in their score key.
+import { DEFAULT_OPERATIONS, OPERATION_OPTIONS } from '../lib/engine.js';
+
 export const ROUTE_SHAPED_GAME_IDS = ['bruecken', 'zahlenhuepfer'];
 
 export const isRouteShapedGame = (gameId) => ROUTE_SHAPED_GAME_IDS.includes(gameId);
@@ -28,4 +30,15 @@ export function makeMiniGameScoreKey(gameId, settings, { includeRoute } = {}) {
     parts.push(settings.routeLength);
   }
   return parts.join('|');
+}
+
+export function normalizedOperationIds(operations) {
+  const merged = { ...DEFAULT_OPERATIONS, ...(operations ?? {}) };
+  const enabled = OPERATION_OPTIONS.filter((option) => merged[option.id]).map((option) => option.id);
+  return enabled.length > 0 ? enabled : OPERATION_OPTIONS.filter((option) => DEFAULT_OPERATIONS[option.id]).map((option) => option.id);
+}
+
+export function makeMixedGameScoreKey(gameId, settings, options = {}) {
+  const baseKey = makeMiniGameScoreKey(gameId, settings, options);
+  return `${baseKey}|ops=${normalizedOperationIds(settings.operations).join('-')}`;
 }

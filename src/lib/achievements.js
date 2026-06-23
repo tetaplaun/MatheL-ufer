@@ -25,6 +25,10 @@ export const MINI_GAME_IDS = [
   'drehzwillinge',
   'faktorenfinder',
   'zahlenhuepfer',
+  'rechendetektiv',
+  'teilerei',
+  'fehlerfabrik',
+  'roboterprogramm',
 ];
 
 export const EMPTY_STATS = {

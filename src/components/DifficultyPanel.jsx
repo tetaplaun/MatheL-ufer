@@ -1,5 +1,11 @@
 import React from 'react';
-import { ANSWER_COUNT_OPTIONS, DIFFICULTY_OPTIONS, ROUTE_OPTIONS } from '../lib/engine.js';
+import {
+  ANSWER_COUNT_OPTIONS,
+  DEFAULT_OPERATIONS,
+  DIFFICULTY_OPTIONS,
+  OPERATION_OPTIONS,
+  ROUTE_OPTIONS,
+} from '../lib/engine.js';
 
 // Controlled settings panel for a round: difficulty, skip-row toggles, route
 // length, and answer count. Shared by the start card today and the Mini Games
@@ -16,6 +22,15 @@ export function DifficultyPanel({
   children,
 }) {
   const shows = (field) => fields.includes(field);
+  const operations = { ...DEFAULT_OPERATIONS, ...(settings.operations ?? {}) };
+
+  const updateOperation = (id, checked) => {
+    const next = { ...operations, [id]: checked };
+    if (!Object.values(next).some(Boolean)) {
+      return;
+    }
+    onChange('operations', next);
+  };
 
   return (
     <div className="setup-panel" aria-label={ariaLabel}>
@@ -97,6 +112,26 @@ export function DifficultyPanel({
                 <strong>{count}</strong>
                 <span>Antworten</span>
               </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {shows('operations') && (
+        <div className="setup-group">
+          <span className="setup-label">Rechenarten</span>
+          <div className="operation-toggle-grid" role="group" aria-label="Rechenarten wÃ¤hlen">
+            {OPERATION_OPTIONS.map((option) => (
+              <label className="checkbox-row operation-toggle" key={option.id}>
+                <input
+                  checked={operations[option.id]}
+                  type="checkbox"
+                  onChange={(event) => updateOperation(option.id, event.target.checked)}
+                />
+                <span>
+                  <strong>{option.symbol}</strong> {option.label}
+                </span>
+              </label>
             ))}
           </div>
         </div>

@@ -1,0 +1,294 @@
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px clamp(16px, 4vw, 32px);
+  color: #16313d;
+  font-weight: 900;
+}
+
+.play {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(14px, 3vh, 26px);
+  min-height: 100%;
+  padding: clamp(12px, 3vw, 24px);
+  overflow: auto;
+}
+
+.promptCard {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(560px, 100%);
+  padding: clamp(16px, 4vw, 28px);
+  border: 5px solid color-mix(in srgb, var(--mg-accent, #247fc3) 24%, transparent);
+  border-radius: 18px;
+  background: #fff;
+  color: #16313d;
+  text-align: center;
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--mg-accent, #247fc3) 18%, transparent);
+}
+
+.promptCard span {
+  color: #456776;
+  font-size: clamp(0.95rem, 2.3vw, 1.15rem);
+  font-weight: 900;
+}
+
+.bigNumber {
+  color: var(--mg-accent, #247fc3);
+  font-size: clamp(3rem, 12vw, 5.8rem);
+  font-weight: 950;
+  line-height: 0.95;
+}
+
+.equation {
+  color: #16313d;
+  font-size: clamp(2.2rem, 8vw, 4.4rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(116px, 1fr));
+  gap: clamp(10px, 2vw, 16px);
+  width: min(660px, 100%);
+}
+
+.options[data-count="6"],
+.options[data-count="8"] {
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+}
+
+.option {
+  display: grid;
+  place-items: center;
+  min-height: clamp(62px, 10vh, 88px);
+  padding: 8px 10px;
+  border: 4px solid rgba(22, 49, 61, 0.12);
+  border-radius: 16px;
+  background: #fff;
+  color: #16313d;
+  font-size: clamp(1.35rem, 4vw, 2.1rem);
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--mg-accent, #247fc3) 22%, transparent);
+}
+
+.optionSmall {
+  gap: 4px;
+  font-size: clamp(1.05rem, 3vw, 1.55rem);
+}
+
+.option small {
+  color: #6b828e;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.option:focus-visible {
+  outline: 4px solid rgba(255, 200, 61, 0.72);
+  outline-offset: 2px;
+}
+
+.option:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--mg-accent, #247fc3) 22%, transparent);
+}
+
+.optionWrong {
+  animation: mixed-wrong 0.42s ease;
+  border-color: var(--accent);
+  background: #ffe4e2;
+  color: var(--accent-dark);
+}
+
+.visualRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: min(680px, 100%);
+}
+
+.shareBox {
+  display: grid;
+  place-items: center;
+  min-width: 58px;
+  min-height: 58px;
+  padding: 8px;
+  border: 3px solid rgba(22, 49, 61, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 1.35rem;
+}
+
+.robotTrack {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(8px, 2vw, 18px);
+  width: min(720px, 100%);
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(155, 93, 229, 0.08);
+}
+
+.robotNode {
+  display: grid;
+  place-items: center;
+  min-width: 74px;
+  min-height: 74px;
+  padding: 8px;
+  border: 4px solid rgba(22, 49, 61, 0.12);
+  border-radius: 18px;
+  background: #fff;
+  color: #16313d;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 950;
+}
+
+.robotLine {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(22, 49, 61, 0.12);
+  overflow: hidden;
+}
+
+.robotProgress {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mg-accent, #247fc3);
+  transition: width 0.25s ease;
+}
+
+.microLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.doneCard {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 18px;
+  text-align: center;
+}
+
+.doneCard h3 {
+  color: #16313d;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+}
+
+.doneStat {
+  color: #16313d;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  font-weight: 850;
+}
+
+.doneBest {
+  color: var(--mg-accent, #247fc3);
+  font-weight: 950;
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+@keyframes mixed-wrong {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px) rotate(-2deg);
+  }
+  75% {
+    transform: translateX(7px) rotate(2deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .options,
+  .options[data-count="6"],
+  .options[data-count="8"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .robotTrack {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .robotLine {
+    width: 100%;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .play {
+    align-content: start;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .promptCard {
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .bigNumber {
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+  }
+
+  .equation {
+    font-size: clamp(1.7rem, 6vw, 2.8rem);
+  }
+
+  .option {
+    min-height: 44px;
+    border-width: 3px;
+    border-radius: 12px;
+    font-size: clamp(1.05rem, 3.6vw, 1.45rem);
+  }
+
+  .visualRow {
+    gap: 5px;
+  }
+
+  .shareBox {
+    min-width: 42px;
+    min-height: 42px;
+    font-size: 1rem;
+  }
+
+  .robotNode {
+    min-width: 54px;
+    min-height: 54px;
+    border-width: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .option,
+  .optionWrong,
+  .robotProgress {
+    animation: none;
+    transition: none;
+  }
+}

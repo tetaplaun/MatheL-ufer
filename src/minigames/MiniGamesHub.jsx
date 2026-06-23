@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DIFFICULTY_OPTIONS } from '../lib/engine.js';
+import { DEFAULT_OPERATIONS, DIFFICULTY_OPTIONS, OPERATION_OPTIONS } from '../lib/engine.js';
 import { DifficultyPanel } from '../components/DifficultyPanel.jsx';
 import { MINI_GAME_REGISTRY } from './registry.js';
 
@@ -13,7 +13,11 @@ export function MiniGamesHub({ settings, onChangeSetting, onPlay, onBack }) {
 
   const difficulty =
     DIFFICULTY_OPTIONS.find((option) => option.id === settings.difficulty) ?? DIFFICULTY_OPTIONS[0];
-  const summary = `${difficulty.label} · ${settings.answerCount} Antworten`;
+  const operations = { ...DEFAULT_OPERATIONS, ...(settings.operations ?? {}) };
+  const operationSummary = OPERATION_OPTIONS.filter((option) => operations[option.id])
+    .map((option) => option.symbol)
+    .join(' ');
+  const summary = `${difficulty.label} · ${settings.answerCount} Antworten · ${operationSummary}`;
 
   return (
     <section className="minigames-panel" aria-label="Mini-Spiele">
@@ -88,7 +92,7 @@ export function MiniGamesHub({ settings, onChangeSetting, onPlay, onBack }) {
             <DifficultyPanel
               settings={settings}
               onChange={onChangeSetting}
-              fields={['difficulty', 'skipRows', 'answerCount']}
+              fields={['difficulty', 'skipRows', 'answerCount', 'operations']}
               ariaLabel="Mini-Spiel-Einstellungen"
             />
             <button className="primary-action" type="button" onClick={() => setIsSettingsOpen(false)}>

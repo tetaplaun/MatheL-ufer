@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isRouteShapedGame, makeMiniGameScoreKey } from './scoreKey.js';
+import {
+  isRouteShapedGame,
+  makeMiniGameScoreKey,
+  makeMixedGameScoreKey,
+  normalizedOperationIds,
+} from './scoreKey.js';
 
 const base = {
   difficulty: 'small',
@@ -61,5 +66,36 @@ describe('makeMiniGameScoreKey', () => {
     expect(isRouteShapedGame('bruecken')).toBe(true);
     expect(isRouteShapedGame('zahlenhuepfer')).toBe(true);
     expect(isRouteShapedGame('blitz')).toBe(false);
+  });
+});
+
+describe('makeMixedGameScoreKey', () => {
+  it('adds the enabled operation set to the score key', () => {
+    const key = makeMixedGameScoreKey('rechendetektiv', {
+      ...base,
+      operations: { add: true, subtract: true, multiply: false, divide: true },
+    });
+
+    expect(key).toContain('rechendetektiv');
+    expect(key).toContain('ops=add-subtract-divide');
+  });
+
+  it('changes when operation settings change', () => {
+    const plusMinus = makeMixedGameScoreKey('rechendetektiv', {
+      ...base,
+      operations: { add: true, subtract: true, multiply: false, divide: false },
+    });
+    const plusDivide = makeMixedGameScoreKey('rechendetektiv', {
+      ...base,
+      operations: { add: true, subtract: false, multiply: false, divide: true },
+    });
+
+    expect(plusMinus).not.toBe(plusDivide);
+  });
+
+  it('falls back to the default operations if every operation is disabled', () => {
+    expect(
+      normalizedOperationIds({ add: false, subtract: false, multiply: false, divide: false }),
+    ).toEqual(['add', 'subtract', 'multiply']);
   });
 });

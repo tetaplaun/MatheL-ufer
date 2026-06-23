@@ -15,12 +15,27 @@ export const ROUTE_OPTIONS = [
 
 export const ANSWER_COUNT_OPTIONS = [4, 6, 8];
 
+export const OPERATION_OPTIONS = [
+  { id: 'add', symbol: '+', label: 'Plus' },
+  { id: 'subtract', symbol: '-', label: 'Minus' },
+  { id: 'multiply', symbol: 'x', label: 'Mal' },
+  { id: 'divide', symbol: '/', label: 'Geteilt' },
+];
+
+export const DEFAULT_OPERATIONS = {
+  add: true,
+  subtract: true,
+  multiply: true,
+  divide: false,
+};
+
 export const DEFAULT_SETTINGS = {
   difficulty: 'small',
   skipEasyRows: false,
   skipTenRow: false,
   routeLength: 'medium',
   answerCount: 4,
+  operations: DEFAULT_OPERATIONS,
 };
 
 export const FINISH_PROGRESS = 100;
