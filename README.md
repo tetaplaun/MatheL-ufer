@@ -61,6 +61,29 @@ leaderboard tamper-proof (scores are still written with the public anon key).
 Server-enforced, account-locked scores (RLS + a column linking entries to the
 user) are a planned follow-up.
 
+## Achievements (logged-in players)
+
+Logged-in players earn achievements ("Erfolge"): a 🏆 trophy case opens from the
+account control (lower-right), and the race-finish screen shows any badges earned
+that race. Progress (cumulative stats + the set of unlocked badges) is stored
+per user in Supabase and cached in `localStorage`, so it follows the player
+across devices. Logged-out players are not tracked.
+
+The system is deliberately game-agnostic: every game emits a generic result
+event that the pure engine in `lib/achievements.js` folds into a stats snapshot,
+then decides which badges are newly unlocked. Today only the main race feeds it;
+the upcoming mini-games plug in by emitting a result with their own `gameId`
+(and, optionally, one new catalog row) — no engine changes required. A few
+forward-looking badges (e.g. the 60-second-blitz champion) are already in the
+catalog and sit locked until their mini-game ships.
+
+One-time setup: **run `supabase-achievements.sql`** in the Supabase SQL editor.
+It creates a `public.user_progress` table (one private, RLS-protected row per
+user holding `stats` + `achievements` JSON) with an `updated_at` trigger.
+
+Like the leaderboard, unlocks are computed client-side and are therefore
+spoofable; server-side validation is out of scope for this kids' app.
+
 ## Scripts
 
 | Command | What it does |
@@ -84,13 +107,17 @@ src/
     page.jsx          # client-only entry that renders <App/>
   App.jsx             # the game (client component)
   App.css             # all styles
-  components/         # Runner, StatusPill, ConfettiBurst, DifficultyPanel, AuthControl
+  components/         # Runner, StatusPill, ConfettiBurst, DifficultyPanel, AuthControl,
+                      # AchievementGallery, AchievementToast
   lib/
     engine.js         # pure game/math logic (no React, no DOM)
     leaderboard.js    # ranking + Supabase/localStorage persistence
     auth.js           # pure auth helpers (username <-> synthetic email, validation)
     supabaseClient.js # singleton Supabase client (auth)
     useSupabaseAuth.js# auth session hook (sign up / in / out)
+    achievements.js   # pure achievement engine (catalog, stats reducer, unlock diffing)
+    achievementsStore.js # Supabase user_progress + localStorage persistence
+    useAchievements.js   # achievement state hook (record results, expose trophies)
 e2e/                  # Playwright specs
 ```
 

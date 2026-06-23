@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 // Bottom-right login control. When logged out it shows an "Anmelden" button
 // that opens a login / sign-up dialog. When logged in it shows the username
 // and an "Abmelden" button. Renders nothing when auth is not configured.
-export function AuthControl({ auth }) {
+export function AuthControl({ auth, onOpenAchievements, achievementCount }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [username, setUsername] = useState('');
@@ -58,6 +58,20 @@ export function AuthControl({ auth }) {
         <span className="auth-fab-user" title={auth.username}>
           {auth.username}
         </span>
+        {onOpenAchievements && (
+          <button
+            aria-label="Erfolge anzeigen"
+            className="auth-achievements"
+            title="Erfolge"
+            type="button"
+            onClick={onOpenAchievements}
+          >
+            <span aria-hidden="true">🏆</span>
+            {typeof achievementCount === 'number' && (
+              <span className="auth-achievements-badge">{achievementCount}</span>
+            )}
+          </button>
+        )}
         <button className="auth-logout" type="button" onClick={auth.signOut}>
           Abmelden
         </button>

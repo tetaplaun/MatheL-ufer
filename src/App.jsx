@@ -33,6 +33,10 @@ import {
   saveSupabaseLeaderboardEntry,
 } from './lib/leaderboard.js';
 import { useSupabaseAuth } from './lib/useSupabaseAuth.js';
+import { useAchievements } from './lib/useAchievements.js';
+import { buildRaceResult } from './lib/achievements.js';
+import { AchievementGallery } from './components/AchievementGallery.jsx';
+import { AchievementToast } from './components/AchievementToast.jsx';
 
 const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
@@ -40,6 +44,8 @@ const MAX_SPEED = 11.5;
 
 export default function App() {
   const auth = useSupabaseAuth();
+  const achievements = useAchievements(auth);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
   const [leaderboardSettings, setLeaderboardSettings] = useState(DEFAULT_SETTINGS);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
@@ -71,6 +77,7 @@ export default function App() {
   const animationRef = useRef(null);
   const timeoutRef = useRef(null);
   const runTimeoutRef = useRef(null);
+  const recordedRaceRef = useRef(null);
 
   const selectedDifficulty = DIFFICULTY_OPTIONS.find((option) => option.id === gameSettings.difficulty) ?? DIFFICULTY_OPTIONS[0];
   const routeConfig = ROUTE_OPTIONS.find((option) => option.id === gameSettings.routeLength) ?? ROUTE_OPTIONS[1];
@@ -237,6 +244,21 @@ export default function App() {
     [],
   );
 
+  // Record the finished race into the achievement system exactly once. The ref
+  // guard is set synchronously before any async work so React Strict Mode's
+  // double-invocation of effects cannot record the same race twice. The key
+  // (finishTime) resets to null on start/reset, so a replay records again.
+  useEffect(() => {
+    if (phase !== 'finished' || !finishTime || recordedRaceRef.current === finishTime) {
+      return;
+    }
+    recordedRaceRef.current = finishTime;
+    achievements.recordGameResult(
+      buildRaceResult(raceSummary, answerStats, gameSettings, totalSeconds, new Date().toISOString()),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, finishTime]);
+
   function updateSetting(key, value) {
     setGameSettings((settings) => ({
       ...settings,
@@ -348,6 +370,7 @@ export default function App() {
     setClockTick(0);
     setSavedRaceId(null);
     setConfettiBurstId(0);
+    recordedRaceRef.current = null;
   }
 
   function startGame() {
@@ -371,6 +394,7 @@ export default function App() {
     setClockTick(0);
     setSavedRaceId(null);
     setConfettiBurstId(0);
+    recordedRaceRef.current = null;
   }
 
   function continueRunning(nextSpeed) {
@@ -825,6 +849,33 @@ export default function App() {
               </div>
             </div>
 
+            {achievements.enabled && (
+              <div className="finish-achievements" aria-label="Erfolge dieses Rennens">
+                <div className="finish-achievements-header">
+                  <h3>Erfolge</h3>
+                  <button
+                    className="secondary-action finish-achievements-button"
+                    type="button"
+                    onClick={() => setIsAchievementsOpen(true)}
+                  >
+                    Alle Erfolge ({achievements.unlockedCount}/{achievements.totalCount})
+                  </button>
+                </div>
+                {achievements.lastUnlocked.length > 0 ? (
+                  <ul className="finish-achievement-list">
+                    {achievements.lastUnlocked.map((item) => (
+                      <li className={`finish-achievement finish-achievement--${item.tier}`} key={item.id}>
+                        <span aria-hidden="true">{item.icon}</span>
+                        <strong>{item.title}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="finish-achievement-empty">Diesmal keine neuen Erfolge – spiel weiter!</p>
+                )}
+              </div>
+            )}
+
             <form className="leaderboard-save" onSubmit={saveLeaderboardEntry}>
               <label>
                 <span>{auth.isLoggedIn ? 'Angemeldet als' : 'Name für Rangliste'}</span>
@@ -869,7 +920,17 @@ export default function App() {
         </section>
       )}
 
-      <AuthControl auth={auth} />
+      <AuthControl
+        auth={auth}
+        achievementCount={achievements.enabled ? achievements.unlockedCount : undefined}
+        onOpenAchievements={achievements.enabled ? () => setIsAchievementsOpen(true) : undefined}
+      />
+      <AchievementToast queue={achievements.recentlyUnlocked} onDismiss={achievements.dismissUnlocked} />
+      <AchievementGallery
+        achievements={achievements}
+        open={isAchievementsOpen}
+        onClose={() => setIsAchievementsOpen(false)}
+      />
     </main>
   );
 }
