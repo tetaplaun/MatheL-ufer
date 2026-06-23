@@ -142,4 +142,42 @@ test.describe('Mini-Spiele hub', () => {
 
     await page.mouse.up();
   });
+
+  test('Zahlen-Regen: numbers rain to the Boden line and never sink well below it', async ({ page }) => {
+    await openHub(page);
+    await page.locator('.minigame-card', { hasText: 'Zahlen-Regen' }).click();
+
+    const field = page.locator('[class*="field"]').first();
+    const line = page.locator('[class*="catchLine"]').first();
+    await expect(field).toBeAttached();
+    await expect(line).toBeAttached();
+
+    const fieldBox = await field.boundingBox();
+    const lineBox = await line.boundingBox();
+    const linePct = ((lineBox.y - fieldBox.y) / fieldBox.height) * 100;
+    expect(linePct, 'Boden line sits near the bottom of the field').toBeGreaterThan(60);
+
+    // A number actually descends over time (full-height rain).
+    const firstTile = field.locator('button').filter({ hasText: /^\d+$/ }).first();
+    const ya = (await firstTile.boundingBox()).y;
+    await page.waitForTimeout(1200);
+    const yb = (await firstTile.boundingBox()).y;
+    expect(yb, 'numbers should fall').toBeGreaterThan(ya + 10);
+
+    // Over several seconds, no bubble's TOP ever crosses below the line — the row
+    // resets the instant it lands, so nothing sinks past the ground.
+    let maxTopPct = 0;
+    for (let s = 0; s < 24; s += 1) {
+      const tiles = field.locator('button').filter({ hasText: /^\d+$/ });
+      const n = await tiles.count();
+      for (let i = 0; i < n; i += 1) {
+        const bb = await tiles.nth(i).boundingBox();
+        if (bb) {
+          maxTopPct = Math.max(maxTopPct, ((bb.y - fieldBox.y) / fieldBox.height) * 100);
+        }
+      }
+      await page.waitForTimeout(160);
+    }
+    expect(maxTopPct, 'no bubble should sink below the Boden line').toBeLessThan(linePct);
+  });
 });

@@ -45,6 +45,43 @@
   overflow: hidden;
 }
 
+/* Danger band below the catch line — numbers that reach it are lost. */
+.ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 85%;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(225, 73, 62, 0.08), rgba(225, 73, 62, 0.2));
+  pointer-events: none;
+}
+
+/* The clear red "Boden" line marking where a falling number is missed. */
+.catchLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 85%;
+  z-index: 3;
+  border-top: 4px dashed rgba(225, 73, 62, 0.85);
+  pointer-events: none;
+}
+
+.catchLabel {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(225, 73, 62, 0.9);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 /* Each falling number. translateY is driven imperatively by the rAF loop, so
    we keep transition off here and let JS own the transform. */
 .tile {
@@ -65,7 +102,8 @@
   touch-action: manipulation;
   user-select: none;
   box-shadow: 0 8px 0 rgba(36, 127, 195, 0.2);
-  will-change: transform;
+  z-index: 5;
+  will-change: top;
 }
 
 .tile:focus-visible {

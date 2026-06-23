@@ -19,14 +19,18 @@ const BASE_SPEED = 16; // %/s for the first task
 const SPEED_PER_COMBO = 1.4; // each correct answer speeds things up a touch
 const MAX_SPEED = 42; // never faster than this
 
-// Tiles spawn just above the stage and fall to just past the bottom.
-const SPAWN_Y = -16; // % (above the visible stage)
-const FLOOR_Y = 108; // % (a touch below the stage → counts as "missed")
+// Tile vertical position is the tile CENTER as a % of the field height, so the
+// numbers rain across the whole field and land on a visible line near the
+// bottom. SPAWN_Y is just above the top; a correct number whose center crosses
+// CATCH_LINE_Y has been missed.
+const SPAWN_Y = -12; // % (center just above the field top)
+const CATCH_LINE_Y = 85; // % (the visible red "Boden" line and the miss threshold)
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-// Lay out N tiles across the width in shuffled columns, each with its own
-// vertical head start so they don't fall in a perfect rigid row.
+// Lay out N tiles across the width in shuffled columns. They share one vertical
+// start and speed, so the whole row reaches the ground line together — the
+// moment it lands is an unambiguous "round over" (no bubble sinks below ground).
 const spawnTiles = (question) => {
   const count = question.options.length;
   // Even columns with margins; jitter a little so it feels organic.
@@ -42,7 +46,7 @@ const spawnTiles = (question) => {
     value: question.options[optionIndex],
     correct: question.options[optionIndex] === question.correct,
     x: columns[i],
-    y: SPAWN_Y - i * 6, // small staggered head start
+    y: SPAWN_Y, // one row; every bubble reaches the ground at the same moment
   }));
 };
 
@@ -69,6 +73,7 @@ export default function ZahlenRegen({ settings, onExit, onComplete }) {
 
   // ---- refs read synchronously inside the rAF loop / rapid taps -----------
   const tileNodesRef = useRef(new Map()); // id -> DOM node (for imperative transform)
+  const fieldRef = useRef(null); // the falling field, measured for ground-hit detection
   const positionsRef = useRef(new Map()); // id -> current y (%)
   const tilesRef = useRef(tiles); // current tile list (avoid stale closures)
   const correctValueRef = useRef(question.correct);
@@ -280,21 +285,30 @@ export default function ZahlenRegen({ settings, onExit, onComplete }) {
       lastTsRef.current = ts;
 
       const speed = currentSpeed();
-      let correctMissed = false;
+      // A bubble counts as "landed" when its BOTTOM edge meets the line, not its
+      // centre. Measure the bubble half-height as a % of the field live so it
+      // stays correct across resizes / responsive tile sizes.
+      const fieldH = fieldRef.current ? fieldRef.current.clientHeight : 0;
+      const sampleNode = tilesRef.current[0] ? tileNodesRef.current.get(tilesRef.current[0].id) : null;
+      const halfPct = fieldH > 0 && sampleNode ? ((sampleNode.offsetHeight / 2) / fieldH) * 100 : 8;
+      let groundHit = false;
 
       for (const tile of tilesRef.current) {
         const y = (positionsRef.current.get(tile.id) ?? tile.y) + speed * dt;
         positionsRef.current.set(tile.id, y);
         const node = tileNodesRef.current.get(tile.id);
         if (node) {
-          node.style.transform = `translate(-50%, ${y}%)`;
+          node.style.top = `${y}%`;
         }
-        if (tile.correct && y >= FLOOR_Y) {
-          correctMissed = true;
+        // Landed once the bubble's bottom edge reaches the line.
+        if (y + halfPct >= CATCH_LINE_Y) {
+          groundHit = true;
         }
       }
 
-      if (correctMissed && !resolvingRef.current) {
+      // The row reaching the ground ends the task — the correct number was not
+      // caught in time, so it costs a heart (no bubble sinks below the line).
+      if (groundHit && !resolvingRef.current) {
         loseHeart();
       }
 
@@ -401,13 +415,17 @@ export default function ZahlenRegen({ settings, onExit, onComplete }) {
             <span className={styles.taskQ}>?</span>
           </div>
 
-          <div className={styles.field} aria-hidden="false">
+          <div ref={fieldRef} className={styles.field} aria-hidden="false">
+            <div className={styles.ground} aria-hidden="true" />
+            <div className={styles.catchLine} aria-hidden="true">
+              <span className={styles.catchLabel}>Boden</span>
+            </div>
             {tiles.map((tile) => (
               <button
                 key={tile.id}
                 type="button"
                 className={styles.tile}
-                style={{ left: `${tile.x}%`, transform: `translate(-50%, ${tile.y}%)` }}
+                style={{ left: `${tile.x}%`, top: `${tile.y}%`, transform: 'translate(-50%, -50%)' }}
                 ref={(node) => {
                   if (node) {
                     tileNodesRef.current.set(tile.id, node);
