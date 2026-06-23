@@ -1,0 +1,343 @@
+.play {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(14px, 3vh, 28px);
+  width: 100%;
+  height: 100%;
+  padding: clamp(10px, 2vh, 22px);
+}
+
+/* --- The gorge scene: two cliffs, a plank bridge, and the runner --- */
+.scene {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: min(94%, 720px);
+  padding: clamp(34px, 7vh, 64px) 0 clamp(10px, 2vh, 18px);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #bfe8ff 0%, #e3f5ff 58%, #cdeccf 58%, #b2e0b6 100%);
+  box-shadow: inset 0 -10px 0 rgba(36, 127, 195, 0.12);
+  overflow: hidden;
+}
+
+.cliffLeft,
+.cliffRight {
+  position: absolute;
+  bottom: 0;
+  width: clamp(26px, 7vw, 64px);
+  height: 58%;
+  background: linear-gradient(180deg, #7a8a3a 0%, #5d6b2c 24%, #8a6b46 24%, #6b5132 100%);
+}
+
+.cliffLeft {
+  left: 0;
+  border-radius: 0 14px 0 0;
+}
+
+.cliffRight {
+  right: 0;
+  border-radius: 14px 0 0 0;
+}
+
+.bridge {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1.4vw, 12px);
+  width: calc(100% - clamp(52px, 14vw, 128px));
+  margin: 0 auto;
+}
+
+/* Every gap holds one plank's worth of space; min 48px touch height. */
+.gap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1 1 0;
+  min-width: clamp(34px, 6vw, 60px);
+  min-height: clamp(54px, 9vh, 74px);
+  border-radius: 10px;
+}
+
+/* A firmed plank: solid wood the runner can stand on. */
+.gapDone .plank {
+  display: block;
+  width: 100%;
+  height: clamp(18px, 3.4vh, 26px);
+  border-radius: 7px;
+  background: repeating-linear-gradient(90deg, #b5793f 0 10px, #a86c34 10px 20px);
+  box-shadow: 0 5px 0 rgba(74, 46, 18, 0.4);
+}
+
+/* The next gap to fill: the highlighted, droppable task. */
+.gapActive {
+  min-width: clamp(64px, 14vw, 116px);
+  border: 4px dashed var(--mg-accent, #ff7a59);
+  background: rgba(255, 122, 89, 0.16);
+  cursor: pointer;
+  animation: bb-pulse 1.3s ease-in-out infinite;
+}
+
+.gapTask {
+  color: #16313d;
+  font-size: clamp(1.1rem, 3.4vw, 2rem);
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.gapReady {
+  border-style: solid;
+  border-color: var(--yellow);
+  background: rgba(255, 200, 61, 0.22);
+}
+
+/* Active gap snapping shut into a plank when the right stone lands. */
+.gapFirming {
+  border-color: var(--green);
+  background: rgba(47, 155, 97, 0.28);
+  animation: none;
+}
+
+/* Future gaps: empty drops into the gorge, clearly not yet reachable. */
+.gapTodo {
+  border-bottom: 4px dotted rgba(22, 49, 61, 0.28);
+  background:
+    linear-gradient(180deg, transparent 60%, rgba(36, 127, 195, 0.1) 100%);
+  opacity: 0.85;
+}
+
+/* The runner walks along the bridge from gap to gap. `left` is a percentage of
+   the scene (the containing block), so it slides across the inner span between
+   the two cliffs as --runner-pos goes 0 → 1 — robust at any viewport size. */
+.runner {
+  position: absolute;
+  bottom: clamp(26px, 5vh, 42px);
+  left: calc(8% + var(--runner-pos, 0) * 84%);
+  z-index: 2;
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  line-height: 1;
+  transform: translateX(-50%);
+  transition: left 0.42s cubic-bezier(0.34, 1.2, 0.5, 1);
+}
+
+.runnerStepping {
+  animation: bb-hop 0.42s ease;
+}
+
+.hint {
+  color: #456776;
+  font-size: clamp(1rem, 2.2vw, 1.3rem);
+  font-weight: 900;
+  text-align: center;
+}
+
+/* --- The stone pile (draggable answer chips) --- */
+.stones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 18px);
+  max-width: 680px;
+}
+
+.stone {
+  min-width: clamp(60px, 13vw, 96px);
+  min-height: clamp(60px, 13vw, 96px);
+  font-size: clamp(1.7rem, 5vw, 2.8rem);
+  border-radius: 50% 50% 46% 46%;
+  background: linear-gradient(180deg, #f2ede4 0%, #d9cfbe 100%);
+  box-shadow: 0 6px 0 rgba(110, 92, 64, 0.4);
+}
+
+.stoneWrong {
+  animation: bb-wobble 0.44s ease;
+  border-color: var(--accent);
+  background: #ffe4e2;
+  color: var(--accent-dark);
+}
+
+/* --- Progress (status row) --- */
+.progress {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.progressLabel {
+  display: flex;
+  justify-content: space-between;
+  color: #456776;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.plankBar {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.plankDoneDot,
+.plankActiveDot,
+.plankTodoDot {
+  width: clamp(16px, 4vw, 26px);
+  height: 8px;
+  border-radius: 4px;
+}
+
+.plankDoneDot {
+  background: #a86c34;
+}
+
+.plankActiveDot {
+  background: var(--mg-accent, #ff7a59);
+}
+
+.plankTodoDot {
+  background: rgba(22, 49, 61, 0.16);
+}
+
+.microLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* --- Done screen --- */
+.doneCard {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  align-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 18px;
+}
+
+.doneCard h3 {
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  color: #16313d;
+}
+
+.doneStat {
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  color: #16313d;
+  font-weight: 800;
+}
+
+.doneBest {
+  color: var(--mg-accent, #ff7a59);
+  font-weight: 900;
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+@keyframes bb-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 89, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 122, 89, 0.22);
+  }
+}
+
+@keyframes bb-hop {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-16px);
+  }
+}
+
+@keyframes bb-wobble {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-7px, 4px) rotate(-4deg);
+  }
+  75% {
+    transform: translate(7px, 4px) rotate(4deg);
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .play {
+    align-content: start;
+    gap: 8px;
+    height: auto;
+    min-height: 100%;
+    padding: 8px;
+  }
+
+  .scene {
+    width: min(96%, 720px);
+    padding: 20px 0 6px;
+    border-radius: 16px;
+  }
+
+  .gap {
+    min-height: 38px;
+  }
+
+  .gapActive {
+    min-width: clamp(70px, 13vw, 98px);
+    border-width: 3px;
+  }
+
+  .gapTask {
+    font-size: clamp(1rem, 3vw, 1.45rem);
+  }
+
+  .runner {
+    bottom: 18px;
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+  }
+
+  .hint {
+    font-size: 0.95rem;
+  }
+
+  .stones {
+    gap: 8px;
+  }
+
+  .stone {
+    min-width: 54px;
+    min-height: 54px;
+    font-size: 1.55rem;
+  }
+}
+
+/* Reduced motion: no pulse / hop / wobble; keep state changes instant. */
+@media (prefers-reduced-motion: reduce) {
+  .gapActive {
+    animation: none;
+  }
+  .runner {
+    transition: none;
+  }
+  .runnerStepping,
+  .stoneWrong {
+    animation: none;
+  }
+}

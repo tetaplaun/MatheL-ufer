@@ -1,0 +1,264 @@
+.play {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(12px, 2.4vh, 24px);
+  width: 100%;
+  height: 100%;
+  padding: clamp(10px, 2vh, 22px);
+  overflow-y: auto;
+}
+
+.hint {
+  color: #456776;
+  font-size: clamp(1rem, 2.2vw, 1.3rem);
+  font-weight: 900;
+  text-align: center;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(14px, 5vw, 60px);
+  width: 100%;
+  max-width: 640px;
+  justify-items: center;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.6vh, 16px);
+  width: 100%;
+  max-width: 240px;
+}
+
+/* Every tile shares one footprint so the two columns line up neatly. */
+.tile {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: clamp(56px, 9vh, 78px);
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-size: clamp(1.5rem, 5vw, 2.4rem);
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+}
+
+.questionTile {
+  border: 4px solid rgba(22, 49, 61, 0.14);
+  background: #ffffff;
+  color: #16313d;
+  box-shadow: 0 6px 0 rgba(255, 200, 61, 0.32);
+}
+
+.resultTile {
+  border: 5px dashed rgba(36, 127, 195, 0.45);
+  background: rgba(36, 127, 195, 0.08);
+  color: #247fc3;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.resultTile:focus-visible {
+  outline: 4px solid rgba(255, 200, 61, 0.72);
+  outline-offset: 2px;
+}
+
+.resultReady {
+  border-style: solid;
+  border-color: var(--yellow);
+  background: rgba(255, 200, 61, 0.16);
+}
+
+/* Highlight while a question chip hovers over a result tile (dnd-kit isOver). */
+.resultTile:global(.mg-zone--over) {
+  border-style: solid;
+  border-color: var(--green);
+  background: rgba(47, 155, 97, 0.16);
+  transform: scale(1.04);
+}
+
+.tileSolved {
+  border: 4px solid var(--green);
+  background: rgba(47, 155, 97, 0.14);
+  color: var(--green);
+  box-shadow: none;
+}
+
+.tileGlow {
+  animation: zm-pop 0.42s ease;
+  border-color: var(--green);
+  background: rgba(47, 155, 97, 0.28);
+}
+
+.tileWrong {
+  animation: zm-bounce 0.44s ease;
+  border-color: var(--accent);
+  background: #ffe4e2;
+  color: var(--accent-dark);
+}
+
+@keyframes zm-bounce {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-7px, 3px) rotate(-3deg);
+  }
+  75% {
+    transform: translate(7px, 3px) rotate(3deg);
+  }
+}
+
+@keyframes zm-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileWrong,
+  .tileGlow,
+  .resultTile {
+    animation: none;
+    transition: none;
+  }
+  .resultTile:global(.mg-zone--over) {
+    transform: none;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .play {
+    align-content: start;
+    gap: 6px;
+    height: auto;
+    min-height: 100%;
+    padding: 6px 8px;
+  }
+
+  .hint {
+    font-size: 0.86rem;
+  }
+
+  .board {
+    gap: 8px;
+    max-width: 620px;
+  }
+
+  .column {
+    gap: 5px;
+    max-width: none;
+  }
+
+  .tile {
+    min-height: 38px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: clamp(1.2rem, 3.6vw, 1.6rem);
+  }
+
+  .questionTile {
+    border-width: 3px;
+    box-shadow: 0 4px 0 rgba(255, 200, 61, 0.32);
+  }
+
+  .resultTile {
+    border-width: 4px;
+  }
+
+  .progress {
+    gap: 2px;
+  }
+
+  .progressLabel {
+    font-size: 0.85rem;
+  }
+
+  .starBar {
+    font-size: 0.8rem;
+  }
+}
+
+.progress {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.progressLabel {
+  display: flex;
+  justify-content: space-between;
+  color: #456776;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.starBar {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  font-size: clamp(0.9rem, 2.4vw, 1.25rem);
+  line-height: 1;
+}
+
+.starOn {
+  color: var(--yellow);
+}
+
+.starOff {
+  color: rgba(22, 49, 61, 0.18);
+}
+
+.microLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.doneCard {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  align-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 18px;
+}
+
+.doneCard h3 {
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  color: #16313d;
+}
+
+.doneStat {
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  color: #16313d;
+  font-weight: 800;
+}
+
+.doneBest {
+  color: #247fc3;
+  font-weight: 900;
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}

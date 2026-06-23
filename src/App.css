@@ -286,7 +286,7 @@ h1 {
   bottom: 0;
   left: 2%;
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   height: 96px;
   pointer-events: none;
@@ -501,7 +501,7 @@ h1 {
 }
 
 .control-strip {
-  align-self: end;
+  align-self: flex-end;
 }
 
 .home-start {
@@ -724,7 +724,7 @@ h1 {
 
 .start-card-header {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   justify-content: space-between;
   width: 100%;
   gap: 16px;
@@ -1027,7 +1027,7 @@ h1 {
 
 .finish-header {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   justify-content: space-between;
   width: 100%;
   gap: 18px;
@@ -2398,5 +2398,583 @@ h1 {
   100% {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+
+/* ===================================================================
+   Mini Games hub + shared mini-game primitives
+   =================================================================== */
+
+/* Tertiary home button ("Mini-Spiele") — third theme tone, smaller tier so the
+   three-button home stack fits short/landscape phones (docs §2). */
+.tertiary-action {
+  min-width: 132px;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 950;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow:
+    inset 0 -6px 0 rgba(10, 50, 82, 0.22),
+    0 8px 0 #1b5e91;
+}
+
+.tertiary-action:active {
+  transform: translateY(4px);
+  box-shadow:
+    inset 0 -4px 0 rgba(10, 50, 82, 0.22),
+    0 4px 0 #1b5e91;
+}
+
+.home-start-button--tertiary {
+  min-height: clamp(72px, 11vh, 100px);
+  font-size: clamp(1.5rem, 4.2vw, 2.3rem);
+}
+
+/* Full-bleed overlays for the hub and an active game. */
+.minigames-panel,
+.minigame-panel {
+  position: fixed;
+  z-index: 25;
+  inset: 0;
+  display: grid;
+  padding: clamp(8px, 2vw, 20px);
+  max-height: 100dvh;
+  overflow: hidden;
+  background: rgba(17, 55, 60, 0.32);
+  backdrop-filter: blur(4px);
+}
+
+.minigames-shell,
+.minigame-shell {
+  display: flex;
+  flex-direction: column;
+  width: min(900px, 100%);
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 4px solid rgba(22, 49, 61, 0.16);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow:
+    0 16px 0 rgba(105, 65, 30, 0.16),
+    0 24px 52px rgba(19, 49, 61, 0.28);
+}
+
+/* --- Hub ---------------------------------------------------------- */
+.minigames-shell {
+  gap: 14px;
+  padding: clamp(14px, 3vw, 26px);
+}
+
+.minigames-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.minigames-header h2 {
+  color: #16313d;
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+}
+
+.minigames-header p {
+  color: #2c4a57;
+  font-weight: 700;
+}
+
+.minigames-settings-chip {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 3px solid rgba(22, 49, 61, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: #16313d;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.minigames-settings-edit {
+  color: var(--blue);
+}
+
+.minigames-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: clamp(10px, 2vw, 18px);
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  /* Rows must size to the cards' FULL content. Plain `auto` rows underestimate
+     the height (they exclude flex/leftover content), which on narrow screens
+     left rows too short — cards overflowed their track and overlapped the row
+     below. `max-content` sizes each row to its tallest card's real height. */
+  grid-auto-rows: max-content;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.minigame-card {
+  --mg-accent: #247fc3;
+  /* Flex column (not grid): every child — including the tagline — contributes to
+     the card's intrinsic height, so the grid track sizes correctly and nothing
+     overflows. A grid `1fr` tagline row was excluded from that height. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 168px;
+  padding: 16px 14px;
+  border: 4px solid rgba(22, 49, 61, 0.1);
+  border-top: 7px solid var(--mg-accent);
+  border-radius: 18px;
+  background: #fff;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 8px 0 rgba(22, 49, 61, 0.12);
+  transition: transform 0.12s ease;
+}
+
+.minigame-card:active {
+  transform: translateY(4px);
+  box-shadow: 0 4px 0 rgba(22, 49, 61, 0.12);
+}
+
+.minigame-card:focus-visible {
+  outline: 4px solid rgba(255, 200, 61, 0.72);
+  outline-offset: 2px;
+}
+
+.minigame-card--locked {
+  cursor: default;
+  opacity: 0.62;
+  filter: grayscale(0.4);
+}
+
+.minigame-card-icon {
+  font-size: clamp(2.4rem, 7vw, 3.2rem);
+  line-height: 1;
+}
+
+.minigame-card-name {
+  color: #16313d;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.minigame-card-tagline {
+  color: #456776;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.minigame-card-badge {
+  align-self: center;
+  margin-top: auto;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--mg-accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.minigame-card-badge--bald {
+  background: rgba(22, 49, 61, 0.12);
+  color: #456776;
+}
+
+/* --- Active game shell ------------------------------------------- */
+.minigame-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: clamp(12px, 2.4vw, 18px) clamp(14px, 3vw, 22px);
+  background: var(--mg-accent, #247fc3);
+  color: #fff;
+}
+
+.minigame-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.minigame-title h2 {
+  color: #fff;
+  font-size: clamp(1.2rem, 3.6vw, 1.8rem);
+}
+
+.minigame-title-icon {
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  line-height: 1;
+}
+
+.minigame-route-chip {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0.92;
+}
+
+.minigame-exit {
+  flex: 0 0 auto;
+}
+
+.minigame-status {
+  padding: 10px clamp(14px, 3vw, 22px);
+  border-bottom: 2px solid rgba(22, 49, 61, 0.08);
+}
+
+.minigame-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.minigame-footer {
+  padding: 10px clamp(14px, 3vw, 22px);
+  border-top: 2px solid rgba(22, 49, 61, 0.08);
+}
+
+.minigame-placeholder,
+.minigame-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #456776;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+.minigame-panel--loading {
+  place-items: center;
+}
+
+/* --- Shared draggable chip / droppable zone (docs §5) ------------ */
+.mg-chip {
+  display: grid;
+  place-items: center;
+  min-width: clamp(60px, 12vw, 92px);
+  min-height: clamp(60px, 12vw, 92px);
+  padding: 0 14px;
+  border: 4px solid rgba(22, 49, 61, 0.14);
+  border-radius: 16px;
+  background: #fff;
+  color: #16313d;
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  font-weight: 950;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  box-shadow: 0 6px 0 rgba(36, 127, 195, 0.22);
+}
+
+.mg-chip:focus-visible {
+  outline: 4px solid rgba(255, 200, 61, 0.72);
+  outline-offset: 2px;
+}
+
+.mg-chip:active {
+  cursor: grabbing;
+}
+
+.mg-chip--selected {
+  border-color: var(--yellow);
+  background: rgba(255, 200, 61, 0.18);
+}
+
+.mg-chip--dragging {
+  opacity: 0.4;
+}
+
+.mg-chip--locked {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.mg-chip--overlay {
+  /* The DragOverlay clone only carries .mg-chip(+--overlay) (and sometimes a
+     game's chip class), so it needs its own large size — otherwise the dragged
+     number falls back to ~1rem and looks tiny while dragging. */
+  font-size: clamp(1.9rem, 5.5vw, 3.1rem);
+  transform: rotate(-4deg) scale(1.08);
+  border-color: var(--blue);
+  cursor: grabbing;
+  box-shadow: 0 14px 26px rgba(19, 49, 61, 0.32);
+}
+
+/* Clear "drop here" cue while a chip hovers a droppable (the card slot, the
+   dragon's mouth, the active bridge gap, a memory result tile). */
+.mg-zone--over {
+  outline: 4px dashed var(--yellow);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(255, 200, 61, 0.35);
+  filter: brightness(1.06);
+}
+
+/* --- MicroReward (per-correct-answer sparkle, < 10 nodes) -------- */
+.micro-reward {
+  position: absolute;
+  z-index: 14;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.micro-reward-core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 1.9rem;
+  transform: translate(-50%, -50%) scale(0);
+  animation: mr-core 0.6s ease-out forwards;
+}
+
+.micro-reward-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--yellow);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: mr-spark 0.6s ease-out forwards;
+  animation-delay: var(--mr-delay);
+}
+
+@keyframes mr-core {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes mr-spark {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--mr-dx)), calc(-50% + var(--mr-dy)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .micro-reward-spark {
+    display: none;
+  }
+  .micro-reward-core {
+    animation-name: mr-core-static;
+  }
+}
+
+@keyframes mr-core-static {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* --- Hub settings modal ------------------------------------------ */
+.minigame-settings-panel {
+  position: fixed;
+  z-index: 45;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17, 55, 60, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.minigame-settings-card {
+  display: grid;
+  gap: 16px;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 36px);
+  padding: clamp(20px, 4vw, 30px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 4px solid rgba(22, 49, 61, 0.18);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow:
+    0 16px 0 rgba(105, 65, 30, 0.18),
+    0 24px 52px rgba(19, 49, 61, 0.28);
+}
+
+.minigame-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* --- Mini-games responsive --------------------------------------- */
+@media (max-width: 620px) {
+  .minigames-panel,
+  .minigame-panel {
+    padding: 0;
+  }
+
+  .minigames-shell,
+  .minigame-shell {
+    border: 0;
+    border-radius: 0;
+  }
+
+  .minigames-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .home-start {
+    gap: 12px;
+  }
+
+  .home-start-button {
+    min-height: clamp(56px, 22vh, 84px);
+    font-size: clamp(1.3rem, 4vw, 2rem);
+  }
+
+  .home-start-button--tertiary {
+    min-height: clamp(48px, 18vh, 70px);
+  }
+
+  .minigames-panel,
+  .minigame-panel {
+    padding: 10px;
+  }
+
+  .minigames-shell {
+    gap: 8px;
+    padding: 14px 18px;
+  }
+
+  .minigames-header h2 {
+    font-size: clamp(1.45rem, 4vw, 2rem);
+  }
+
+  .minigames-header p {
+    font-size: 0.9rem;
+  }
+
+  .minigames-settings-chip {
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 0.88rem;
+  }
+
+  .minigames-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  .minigame-card {
+    min-height: 134px;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .minigame-card-icon {
+    font-size: 2rem;
+  }
+
+  .minigame-card-name {
+    font-size: 0.9rem;
+  }
+
+  .minigame-card-tagline {
+    font-size: 0.74rem;
+    line-height: 1.15;
+  }
+
+  .minigame-card-badge {
+    font-size: 0.64rem;
+  }
+
+  .minigame-header {
+    padding: 7px 18px;
+  }
+
+  .minigame-title {
+    gap: 8px;
+  }
+
+  .minigame-title h2 {
+    font-size: clamp(1rem, 3.5vw, 1.45rem);
+  }
+
+  .minigame-title-icon {
+    font-size: 1.6rem;
+  }
+
+  .minigame-route-chip {
+    font-size: 0.72rem;
+  }
+
+  .minigame-exit {
+    min-height: 44px;
+    padding: 0 18px;
+  }
+
+  .minigame-status {
+    padding: 6px 18px;
+  }
+
+  .mg-chip {
+    min-width: clamp(52px, 10vw, 72px);
+    min-height: clamp(52px, 10vw, 72px);
+    padding: 0 10px;
+    border-radius: 14px;
+  }
+
+  .minigame-settings-panel {
+    place-items: start center;
+    padding: 10px;
+    overflow: auto;
+  }
+
+  .minigame-settings-card {
+    max-height: calc(100dvh - 20px);
+    gap: 10px;
+    padding: 16px;
   }
 }

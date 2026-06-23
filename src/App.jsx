@@ -37,6 +37,8 @@ import { useAchievements } from './lib/useAchievements.js';
 import { buildRaceResult } from './lib/achievements.js';
 import { AchievementGallery } from './components/AchievementGallery.jsx';
 import { AchievementToast } from './components/AchievementToast.jsx';
+import { MiniGamesHub } from './minigames/MiniGamesHub.jsx';
+import { MiniGameHost } from './minigames/MiniGameHost.jsx';
 
 const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
@@ -46,6 +48,7 @@ export default function App() {
   const auth = useSupabaseAuth();
   const achievements = useAchievements(auth);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [activeMiniGame, setActiveMiniGame] = useState(null);
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
   const [leaderboardSettings, setLeaderboardSettings] = useState(DEFAULT_SETTINGS);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
@@ -292,6 +295,30 @@ export default function App() {
     setFeedback('Wähle deine Runde.');
   }
 
+  function openMiniGames() {
+    setIsRulesOpen(false);
+    closeLeaderboard();
+    setActiveMiniGame(null);
+    setPhase('minigames');
+    setFeedback('Wähle ein Mini-Spiel.');
+  }
+
+  function openMiniGame(id) {
+    setActiveMiniGame(id);
+    setPhase('minigame');
+  }
+
+  function exitMiniGame() {
+    setActiveMiniGame(null);
+    setPhase('minigames');
+  }
+
+  function exitMiniGamesHub() {
+    setActiveMiniGame(null);
+    setPhase('home');
+    setFeedback('Bereit?');
+  }
+
   async function saveLeaderboardEntry(event) {
     event.preventDefault();
 
@@ -522,6 +549,13 @@ export default function App() {
             <button className="primary-action home-start-button" type="button" onClick={openStartSettings}>
               Spiel starten
             </button>
+            <button
+              className="tertiary-action home-start-button home-start-button--tertiary"
+              type="button"
+              onClick={openMiniGames}
+            >
+              🎮 Mini-Spiele
+            </button>
             <button className="secondary-action home-start-button" type="button" onClick={openLeaderboard}>
               Rangliste
             </button>
@@ -532,7 +566,7 @@ export default function App() {
           <div className="feedback" aria-live="polite">
             {feedback}
           </div>
-          {phase !== 'home' && phase !== 'ready' && phase !== 'finished' && (
+          {isGameActive && (
             <button className="primary-action" type="button" onClick={resetToReady}>
               Neu starten
             </button>
@@ -920,11 +954,31 @@ export default function App() {
         </section>
       )}
 
-      <AuthControl
-        auth={auth}
-        achievementCount={achievements.enabled ? achievements.unlockedCount : undefined}
-        onOpenAchievements={achievements.enabled ? () => setIsAchievementsOpen(true) : undefined}
-      />
+      {phase === 'minigames' && (
+        <MiniGamesHub
+          settings={gameSettings}
+          onChangeSetting={updateSetting}
+          onPlay={openMiniGame}
+          onBack={exitMiniGamesHub}
+        />
+      )}
+
+      {phase === 'minigame' && activeMiniGame && (
+        <MiniGameHost
+          gameId={activeMiniGame}
+          settings={gameSettings}
+          onExit={exitMiniGame}
+          onComplete={achievements.recordGameResult}
+        />
+      )}
+
+      {phase !== 'minigames' && phase !== 'minigame' && (
+        <AuthControl
+          auth={auth}
+          achievementCount={achievements.enabled ? achievements.unlockedCount : undefined}
+          onOpenAchievements={achievements.enabled ? () => setIsAchievementsOpen(true) : undefined}
+        />
+      )}
       <AchievementToast queue={achievements.recentlyUnlocked} onDismiss={achievements.dismissUnlocked} />
       <AchievementGallery
         achievements={achievements}
