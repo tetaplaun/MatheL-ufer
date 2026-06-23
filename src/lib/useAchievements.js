@@ -70,8 +70,19 @@ export function useAchievements(auth) {
         if (!active) {
           return;
         }
-        const remoteStats = remote?.stats ?? null;
-        const remoteMap = remote?.achievements ?? {};
+        // The server is the source of truth. A successful fetch that returns no
+        // row means progress was intentionally cleared (account reset) or never
+        // existed — reset and drop the local cache, otherwise a stale cache
+        // would resurrect deleted progress on the next load.
+        if (!remote) {
+          applyProgress(EMPTY_STATS, {});
+          saveLocalProgress(userId, { stats: EMPTY_STATS, achievements: {} });
+          setReady(true);
+          return;
+        }
+
+        const remoteStats = remote.stats ?? null;
+        const remoteMap = remote.achievements ?? {};
         const finalStats = mergeStats(localStats, remoteStats);
         const finalMap = mergeAchievementMaps(remoteMap, localMap);
         applyProgress(finalStats, finalMap);
@@ -92,7 +103,7 @@ export function useAchievements(auth) {
         if (!active) {
           return;
         }
-        // Offline: keep whatever the local cache gave us.
+        // Offline / fetch failed: keep whatever the local cache gave us.
         setReady(true);
       });
 
