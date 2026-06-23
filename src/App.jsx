@@ -13,6 +13,7 @@ import {
   makeSettingsKey,
 } from './lib/engine.js';
 import { ConfettiBurst, makeConfettiPieces } from './components/ConfettiBurst.jsx';
+import { DifficultyPanel } from './components/DifficultyPanel.jsx';
 import { Runner } from './components/Runner.jsx';
 import { StatusPill } from './components/StatusPill.jsx';
 import {
@@ -555,80 +556,11 @@ export default function App() {
                 ?
               </button>
             </div>
-            <div className="setup-panel" aria-label="Rundeneinstellungen">
-              <div className="setup-group">
-                <span className="setup-label">Schwierigkeit</span>
-                <div className="segmented-control" role="group" aria-label="Schwierigkeit wählen">
-                  {DIFFICULTY_OPTIONS.map((option) => (
-                    <button
-                      className={`segment-button ${gameSettings.difficulty === option.id ? 'segment-button--active' : ''}`}
-                      key={option.id}
-                      type="button"
-                      onClick={() => updateSetting('difficulty', option.id)}
-                    >
-                      <strong>{option.label}</strong>
-                      <span>{option.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <label className="checkbox-row">
-                <input
-                  checked={gameSettings.skipEasyRows}
-                  type="checkbox"
-                  onChange={(event) => updateSetting('skipEasyRows', event.target.checked)}
-                />
-                <span>1er- und 2er-Reihe weglassen</span>
-              </label>
-
-              <label className="checkbox-row">
-                <input
-                  checked={gameSettings.skipTenRow}
-                  type="checkbox"
-                  onChange={(event) => updateSetting('skipTenRow', event.target.checked)}
-                />
-                <span>10er-Reihe weglassen</span>
-              </label>
-
-              <div className="setup-group">
-                <span className="setup-label">Streckenlänge</span>
-                <div className="segmented-control segmented-control--routes" role="group" aria-label="Streckenlänge wählen">
-                  {ROUTE_OPTIONS.map((option) => (
-                    <button
-                      className={`segment-button ${gameSettings.routeLength === option.id ? 'segment-button--active' : ''}`}
-                      key={option.id}
-                      type="button"
-                      onClick={() => updateSetting('routeLength', option.id)}
-                    >
-                      <strong>{option.label}</strong>
-                      <span>{option.meters} m · {option.stops} Stopps</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="setup-group">
-                <span className="setup-label">Antwortmöglichkeiten</span>
-                <div className="segmented-control segmented-control--answers" role="group" aria-label="Anzahl Antwortmöglichkeiten wählen">
-                  {ANSWER_COUNT_OPTIONS.map((count) => (
-                    <button
-                      className={`segment-button ${gameSettings.answerCount === count ? 'segment-button--active' : ''}`}
-                      key={count}
-                      type="button"
-                      onClick={() => updateSetting('answerCount', count)}
-                    >
-                      <strong>{count}</strong>
-                      <span>Antworten</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+            <DifficultyPanel settings={gameSettings} onChange={updateSetting}>
               <p className="settings-preview">
                 {factorRangeLabel}, {routeConfig.meters} m, {routeConfig.stops} Aufgaben, {gameSettings.answerCount} Antworten
               </p>
-            </div>
+            </DifficultyPanel>
             <div className="start-actions">
               <button className="primary-action primary-action--large" type="button" onClick={startGame}>
                 Spiel starten
