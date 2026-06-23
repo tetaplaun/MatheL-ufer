@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildPuzzle, buildPuzzleSet } from './buildPuzzle.js';
+import {
+  buildFactorPairPuzzle,
+  buildProductGrid,
+  buildPuzzle,
+  buildPuzzleSet,
+  buildTwinPuzzle,
+} from './buildPuzzle.js';
 
 const small = {
   difficulty: 'small',
@@ -81,6 +87,54 @@ describe('buildPuzzleSet', () => {
       const set = buildPuzzleSet(small, { size: 4, noSquare: true });
       for (const item of set) {
         expect(item.a).not.toBe(item.b);
+      }
+    }
+  });
+});
+
+describe('buildProductGrid', () => {
+  it('builds the requested number of cells with unique products', () => {
+    const grid = buildProductGrid(small, { cellCount: 25 });
+    expect(grid).toHaveLength(25);
+    expect(new Set(grid.map((cell) => cell.value)).size).toBe(25);
+    for (const cell of grid) {
+      expect(cell.value).toBe(cell.a * cell.b);
+    }
+  });
+
+  it('has enough products for the most restricted small bingo board', () => {
+    const restricted = { ...small, skipEasyRows: true, skipTenRow: true, answerCount: 8 };
+    const grid = buildProductGrid(restricted, { cellCount: 25 });
+    expect(grid).toHaveLength(25);
+    expect(new Set(grid.map((cell) => cell.value)).size).toBe(25);
+  });
+});
+
+describe('buildTwinPuzzle', () => {
+  it('returns exactly one turned twin option', () => {
+    for (let i = 0; i < 80; i += 1) {
+      const puzzle = buildTwinPuzzle(small, { count: 6 });
+      expect(puzzle.a).not.toBe(puzzle.b);
+      expect(puzzle.options).toHaveLength(6);
+      const correctOptions = puzzle.options.filter((option) => option.correct);
+      expect(correctOptions).toHaveLength(1);
+      expect(correctOptions[0].a).toBe(puzzle.b);
+      expect(correctOptions[0].b).toBe(puzzle.a);
+      expect(puzzle.options.filter((option) => option.product === puzzle.a * puzzle.b)).toHaveLength(1);
+    }
+  });
+});
+
+describe('buildFactorPairPuzzle', () => {
+  it('returns exactly one factor pair for the target product', () => {
+    for (let i = 0; i < 80; i += 1) {
+      const puzzle = buildFactorPairPuzzle(large, { count: 8 });
+      expect(puzzle.options).toHaveLength(8);
+      expect(puzzle.target).toBe(puzzle.correct.product);
+      expect(puzzle.options.filter((option) => option.product === puzzle.target)).toHaveLength(1);
+      expect(puzzle.options.filter((option) => option.correct)).toHaveLength(1);
+      for (const option of puzzle.options) {
+        expect(option.product).toBe(option.a * option.b);
       }
     }
   });

@@ -41,6 +41,48 @@ function pickOperands(factors, { noSquare }) {
 const farEnough = (candidate, chosen, minGap) =>
   chosen.every((value) => Math.abs(value - candidate) >= minGap);
 
+const shuffle = (arr) => {
+  const next = arr.slice();
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = randomInt(0, i);
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
+function buildProductEntries(settings, { noSquare = false, maxProduct } = {}) {
+  const factors = factorPoolFor(settings);
+  const difficulty = resolveDifficulty(settings);
+  const cap = maxProduct ?? difficulty.maxFactor * difficulty.maxFactor;
+  const entries = [];
+
+  for (const a of factors) {
+    for (const b of factors) {
+      const product = a * b;
+      if ((!noSquare || a !== b) && product > 0 && product <= cap) {
+        entries.push({ a, b, product });
+      }
+    }
+  }
+
+  return shuffle(entries);
+}
+
+function uniqueProductEntries(settings, options = {}) {
+  const seen = new Set();
+  const entries = [];
+
+  for (const entry of buildProductEntries(settings, options)) {
+    if (seen.has(entry.product)) {
+      continue;
+    }
+    seen.add(entry.product);
+    entries.push(entry);
+  }
+
+  return entries;
+}
+
 // Build one multiple-choice question whose options are unique, at least `minGap`
 // apart, within `maxProduct`, and (optionally) with non-square operands.
 // Returns { a, b, correct, options } like makeQuestion.
@@ -114,6 +156,90 @@ export function buildPuzzle(settings, constraints = {}) {
     b,
     correct,
     options: options.slice(0, count).sort(() => Math.random() - 0.5),
+  };
+}
+
+// Build a bingo/product grid with one unique product per cell. Each cell carries
+// one operand pair that makes the product so the game can ask "a x b = ?".
+export function buildProductGrid(settings, constraints = {}) {
+  const { cellCount = settings.answerCount, noSquare = false, maxProduct } = constraints;
+  const entries = uniqueProductEntries(settings, { noSquare, maxProduct }).slice(0, cellCount);
+
+  return entries.map((entry, index) => ({
+    id: `cell-${index}`,
+    a: entry.a,
+    b: entry.b,
+    value: entry.product,
+  }));
+}
+
+// Build one commutativity puzzle: the child sees a x b and must choose b x a.
+// Distractors avoid the same product so "same amount" never competes with the
+// exact turned twin.
+export function buildTwinPuzzle(settings, constraints = {}) {
+  const { count = settings.answerCount } = constraints;
+  const factors = factorPoolFor(settings);
+  const [a, b] = pickOperands(factors, { noSquare: true });
+  const targetProduct = a * b;
+  const options = [{ a: b, b: a, product: targetProduct, correct: true }];
+  const usedPairs = new Set([`${b}x${a}`]);
+
+  let guard = 0;
+  while (options.length < count && guard < 600) {
+    guard += 1;
+    const [x, y] = pickOperands(factors, { noSquare: true });
+    const product = x * y;
+    if (product === targetProduct) {
+      continue;
+    }
+
+    const option = Math.random() > 0.5 ? { a: x, b: y } : { a: y, b: x };
+    const key = `${option.a}x${option.b}`;
+    if (usedPairs.has(key)) {
+      continue;
+    }
+
+    usedPairs.add(key);
+    options.push({ ...option, product, correct: false });
+  }
+
+  return {
+    a,
+    b,
+    correct: { a: b, b: a, product: targetProduct },
+    options: shuffle(options).map((option, index) => ({ ...option, id: `twin-${index}` })),
+  };
+}
+
+// Reverse recall: the child sees a product and chooses the factor pair that
+// makes it. Exactly one option has product === target.
+export function buildFactorPairPuzzle(settings, constraints = {}) {
+  const { count = settings.answerCount, noSquare = false } = constraints;
+  const factors = factorPoolFor(settings);
+  const [a, b] = pickOperands(factors, { noSquare });
+  const target = a * b;
+  const options = [{ a, b, product: target, correct: true }];
+  const usedProducts = new Set([target]);
+  const usedPairs = new Set([`${a}x${b}`]);
+
+  let guard = 0;
+  while (options.length < count && guard < 800) {
+    guard += 1;
+    const [x, y] = pickOperands(factors, { noSquare });
+    const product = x * y;
+    const key = `${x}x${y}`;
+    if (product === target || usedProducts.has(product) || usedPairs.has(key)) {
+      continue;
+    }
+    usedProducts.add(product);
+    usedPairs.add(key);
+    options.push({ a: x, b: y, product, correct: false });
+  }
+
+  return {
+    target,
+    correct: { a, b, product: target },
+    options: shuffle(options).map((option, index) => ({ ...option, id: `factor-${index}` })),
   };
 }
 

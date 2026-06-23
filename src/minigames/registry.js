@@ -7,7 +7,7 @@ import { lazy } from 'react';
 // achievement events all key off the same string.
 //
 // `tier`:
-//   'core' — built and playable now (the MVP six). Has a lazy `Component`.
+//   'core' — built and playable now. Has a lazy `Component`.
 //   'bald' — committed but not built yet ("Bald" = soon); rendered as a locked
 //            card. No Component.
 //
@@ -81,8 +81,9 @@ export const MINI_GAME_REGISTRY = [
     tagline: 'Tippe das richtige Produkt — drei in einer Reihe.',
     icon: '🔢',
     kind: 'Rätsel',
-    tier: 'bald',
+    tier: 'core',
     accent: '#247fc3',
+    Component: lazy(() => import('./EinmaleinsBingo.jsx')),
   },
   {
     id: 'drehzwillinge',
@@ -90,17 +91,19 @@ export const MINI_GAME_REGISTRY = [
     tagline: 'Finde die gedrehte Zwillings-Aufgabe.',
     icon: '🔁',
     kind: 'Logik',
-    tier: 'bald',
+    tier: 'core',
     accent: '#2f9b61',
+    Component: lazy(() => import('./DrehZwillinge.jsx')),
   },
   {
-    id: 'rennduell',
-    name: 'Renn-Duell',
-    tagline: 'Antworte schneller als der Roboter.',
-    icon: '🤖',
-    kind: 'Wettkampf',
-    tier: 'bald',
+    id: 'faktorenfinder',
+    name: 'Faktoren-Finder',
+    tagline: 'Finde das Paar zur Zahl.',
+    icon: '🧮',
+    kind: 'Denken',
+    tier: 'core',
     accent: '#e1493e',
+    Component: lazy(() => import('./FaktorenFinder.jsx')),
   },
   {
     id: 'zahlenhuepfer',
@@ -108,8 +111,9 @@ export const MINI_GAME_REGISTRY = [
     tagline: 'Spring in der Reihe weiter.',
     icon: '🐸',
     kind: 'Zahlenraum',
-    tier: 'bald',
+    tier: 'core',
     accent: '#9b5de5',
+    Component: lazy(() => import('./ZahlenHuepfer.jsx')),
   },
 ];
 

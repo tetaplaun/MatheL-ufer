@@ -71,7 +71,7 @@ There is **no router** — screens switch via the `phase` string. So the hub is 
 
 The hub contains:
 
-- **A grid of game cards.** Each card: a large **icon/emoji**, the **German name**, a **one-line tagline**, and a small **tier badge** (Core / Bald / Backlog). Big, rounded, colorful, finger-friendly.
+- **A grid of game cards.** Each card: a large **icon/emoji**, the **German name**, a **one-line tagline**, and a small kind badge. Future committed-but-unbuilt games may render a locked **Bald** badge. Big, rounded, colorful, finger-friendly.
 - **A back button** („Zurück") → `home`.
 - **A compact, shared difficulty control.** See the reuse caveat below.
 
@@ -119,7 +119,7 @@ To make "reuse `makeFactorPool`" actually true and to stop every game from re-de
 
 ## 4. The Mini Games Catalog
 
-**Committed set: 10 games.** Everything below the line in §4.2 is an explicit **idea backlog — not committed**. Tier badges on committed games: **🟢 Core** (build first) / **🟡 Bald** (next). Effort: **S / M / L**.
+**Committed set: 10 games.** Everything below the line in §4.2 is an explicit **idea backlog — not committed**. All committed games are now **🟢 Core**. Effort: **S / M / L**.
 
 ### 4.1 Committed games (10)
 
@@ -169,7 +169,7 @@ To make "reuse `makeFactorPool`" actually true and to stop every game from re-de
 
 #### 🧩 Puzzle / Logic
 
-##### Einmaleins-Bingo *(Times-Table Bingo)* — 🟡 Bald · Effort **M**
+##### Einmaleins-Bingo *(Times-Table Bingo)* — 🟢 Core · Effort **M**
 **Tagline:** Tippe das richtige Produkt — drei in einer Reihe.
 - **Was das Kind tut:** A 3×3 / 4×4 / 5×5 grid of products. A task appears (`6×7`). **Tap** the cell with the right answer (drag a marker is optional decoration). Hit → glow + MicroReward; wrong → red wobble. A full row/column/diagonal → `ConfettiBurst` + Bingo banner.
 - **Was es übt:** Recognizing a product among near-distractors.
@@ -178,7 +178,7 @@ To make "reuse `makeFactorPool`" actually true and to stop every game from re-de
 
 #### 🧩 Logic (commutativity)
 
-##### Dreh-Zwillinge *(Twin Swap)* — 🟡 Bald · Effort **S**
+##### Dreh-Zwillinge *(Twin Swap)* — 🟢 Core · Effort **S**
 **Tagline:** Finde die gedrehte Zwillings-Aufgabe (8×3 = 3×8).
 - **Was das Kind tut:** A task card (`8 × 3`); below, find and tap the twin `3 × 8`. Hit → both fold into a heart, a short animation rotates the dot-rectangle 90° to show "same amount." Optional face-down memory mode.
 - **Was es übt:** **The commutative law** — the rotating dot-rectangle is the aha proof, halving the facts to memorize.
@@ -187,7 +187,7 @@ To make "reuse `makeFactorPool`" actually true and to stop every game from re-de
 
 #### 🔢 Number Sense
 
-##### Zahlen-Hüpfer *(Number-Line Hopper)* — 🟡 Bald · Effort **M**
+##### Zahlen-Hüpfer *(Number-Line Hopper)* — 🟢 Core · Effort **M**
 **Tagline:** Spring in der Reihe weiter.
 - **Was das Kind tut:** A frog/runner stands on a number line. A row is shown (`6er-Reihe`), and the child taps or hops to the next correct landing number (`6, 12, 18, ...`). Wrong landing → gentle wobble and retry; correct landing → hop animation + MicroReward.
 - **Was es übt:** Skip-counting and row structure, not only isolated product recall.
@@ -205,15 +205,15 @@ To make "reuse `makeFactorPool`" actually true and to stop every game from re-de
 - **Reward:** MicroReward per hit; `ConfettiBurst` + star on a new personal best.
 - **Scoreboard:** **localStorage-only** at MVP. This is where the score-key shape (hits desc, then accuracy) is designed; if a Supabase `score` mode is later approved, this game is the first to migrate (§6).
 
-##### Renn-Duell *(Race Duel)* — 🟡 Bald · Effort **S**
-**Tagline:** Antworte schneller als der Roboter-Läufer.
-- **Was das Kind tut:** Split track: player on top, a computer robot below. Same task; 4–8 answer buttons. Right → your runner sprints, next task immediately; the robot answers at fixed intervals that shorten with difficulty. First to the flag wins; wrong = a stumble (time loss), no life lost. Win → `ConfettiBurst`.
-- **Was es übt:** As many facts as possible, fast, against a visible opponent.
-- **Difficulty:** `makeQuestion(settings)` per task (4/6/8 buttons); **robot tempo is the difficulty dial** (slow for small, fast for large). Optionally couples distance to the chosen route.
-- **Reward:** `ConfettiBurst` at the flag, „Du warst X Sekunden schneller", trophy on a clear win.
-- **Scoreboard:** time-based; stored **locally** at MVP. Only risk: a few bot-speed tiers to balance.
+##### Faktoren-Finder *(Factor Finder)* — 🟢 Core · Effort **S**
+**Tagline:** Finde das Paar zur Zahl.
+- **Was das Kind tut:** A large product is shown (`24`); below are 4/6/8 factor-pair tiles (`3×8`, `4×7`, ...). Tap the pair that makes the product. Correct → MicroReward + next product; wrong → wobble.
+- **Was es übt:** Reverse recall: not only "6×4 = 24", but also "24 belongs to 6 and 4". This fills a learning gap without adding division language.
+- **Difficulty:** `buildFactorPairPuzzle(settings)` creates exactly one correct factor-pair option for the target product; `answerCount` sets the option count.
+- **Reward:** Star per product; full round → `ConfettiBurst`.
+- **Scoreboard:** time-based; stored **locally** at MVP.
 
-> **Why these 10:** they are the low-floor, high-fun, low-reading core. Four use the requested drag mechanic (Antwort-Karten, Hungry Dragon, Brücken-Bau, Zahlen-Memory). Zahlen-Hüpfer is committed because its `zahlenhuepfer` ID is already part of the achievement breadth set. Together they exercise every reuse path once — `makeQuestion`, `factorPoolFor`, `ROUTE_OPTIONS`, `<DifficultyPanel>`, `<MicroReward>`, `ConfettiBurst`, and a local scoreboard — so the platform is proven before scaling.
+> **Why these 10:** they are the low-floor, high-fun, low-reading core. Four use the requested drag mechanic (Antwort-Karten, Hungry Dragon, Brücken-Bau, Zahlen-Memory). Zahlen-Hüpfer adds row structure, and Faktoren-Finder adds reverse recall without division wording. Together they exercise every reuse path once — `makeQuestion`, `factorPoolFor`, `ROUTE_OPTIONS`, `<DifficultyPanel>`, `<MicroReward>`, `ConfettiBurst`, and a local scoreboard — so the platform is proven before scaling.
 
 ### 4.2 Idea backlog — NOT committed
 
@@ -229,6 +229,7 @@ These are recorded for later. Several are reading-heavy or conceptually hard for
 | **Luftballon-Knall** *(Balloon Pop)* | arcade, inhibition | Needs a score board + tuned penalty. |
 | **Mein Zahlen-Drache** *(My Number Dragon)* | collection | Reuses Hungry Dragon's feed engine; cost is the evolution SVGs. |
 | **Schatzkarte der Inseln** *(Treasure Map)* | collection | Route-shaped; `makeQuestion` with a pinned factor `a` per island; island cleared at 6/8. |
+| **Renn-Duell** *(Race Duel)* | competitive | Deferred because it overlaps heavily with the main race and 60-Sekunden-Blitz; revisit after balancing telemetry. |
 | **Geister-Rennen** *(Ghost Race)* | competitive | **Blocked on** making `makeQuestion` seedable + storing per-checkpoint timestamps. |
 | **Überlebens-Marathon** *(Streak Survival)* | competitive | Needs the score board; raises only tempo, not factor size. |
 | **Zauberbäckerei** *(Magic Bakery)* | concept | **Re-scope before build:** original „4 Bleche × 6 Kekse → …?" is a German word problem — violates minimal-reading. Use an **icon-only** layout (show 4 trays of 6 cookies visually, no sentence). |
@@ -290,7 +291,7 @@ Four committed games use the dragged-answer mechanic; backlog adds more. The sha
 | 🔊 **Sound** | **The codebase has NO audio today** — SFX (pling/boing/chew) is **entirely net-new**: asset sourcing, a mutable audio manager, and browser autoplay-policy handling. **Cut from MVP**; if added later, audio is optional + mute-toggle by default (classroom-friendly). |
 | 🏗️ **File architecture** | `App.jsx` is already ~1200 lines. Putting even 10 games in it is unmaintainable. **Split each mini-game into its own file/component** under `src/minigames/`, lazy-loaded by the hub. No router needed — the hub maps `activeMiniGame` → a lazy component. This also enables the §5 code-splitting. |
 | ♿ **Accessibility** | Mouse + touch parity; tap-to-place fallback for all drag games (§5); `KeyboardSensor` + DnD announcements; never color-only feedback (pair green/red with icon + motion); reduced-motion support. |
-| 🏆 **Scoreboards (start local; Supabase is cross-cutting, deferred)** | Mini-games store scores in **`localStorage` only at MVP** (per `makeMiniGameScoreKey(gameId, settings, options)`, not raw `makeSettingsKey(settings)`). Putting them on the Supabase board is **not "build once"** — it touches the hardcoded `select`/`order` strings, both mappers, `compareLeaderboardEntries`, `makeLeaderboardScoreKey`, the rank-dedup, and `mergeLeaderboardEntries` — **plus a Supabase migration** the reviewer may not control. If/when one mode proves popular, introduce a **`mode` descriptor** `{ column, direction, scoreKey }` so each game declares its sort, add `game_mode` + `score` columns, and migrate that one mode. Time-based games (Brücken-Bau, Renn-Duell, Zahlen-Hüpfer) can use time-then-mistakes; score-based (Blitz, Marathon, Balloon) need the `score`/DESC addition. **None of this is in MVP.** |
+| 🏆 **Scoreboards (start local; Supabase is cross-cutting, deferred)** | Mini-games store scores in **`localStorage` only at MVP** (per `makeMiniGameScoreKey(gameId, settings, options)`, not raw `makeSettingsKey(settings)`). Putting them on the Supabase board is **not "build once"** — it touches the hardcoded `select`/`order` strings, both mappers, `compareLeaderboardEntries`, `makeLeaderboardScoreKey`, the rank-dedup, and `mergeLeaderboardEntries` — **plus a Supabase migration** the reviewer may not control. If/when one mode proves popular, introduce a **`mode` descriptor** `{ column, direction, scoreKey }` so each game declares its sort, add `game_mode` + `score` columns, and migrate that one mode. Time-based games (Brücken-Bau, Faktoren-Finder, Zahlen-Hüpfer) can use time-then-mistakes; score-based (Blitz, Marathon, Balloon) need the `score`/DESC addition. **None of this is in MVP.** |
 
 ### Local score keys (avoid hidden-setting splits)
 
@@ -332,7 +333,7 @@ recordGameResult({
 
 Rule of thumb: **reuse the shared badges; add a signature badge only when a game has a distinctive metric the shared ones can't express.** Keep total additions to ~1–3 across the whole hub.
 
-> `MINI_GAME_IDS` the catalog already anticipates: `antwortkarten, drache, bruecken, memory, regen, blitz, bingo, drehzwillinge, rennduell, zahlenhuepfer`. A new game must use its id from this list (or add it there) so `breadth_all` and per-game badges work.
+> `MINI_GAME_IDS` the catalog already anticipates: `antwortkarten, drache, bruecken, memory, regen, blitz, bingo, drehzwillinge, faktorenfinder, zahlenhuepfer`. A new game must use its id from this list (or add it there) so `breadth_all` and per-game badges work.
 
 > Achievements are **logged-in only** (guests just play). The unlock toast + finish-panel strip already exist; mini-games get them automatically by calling `recordGameResult`.
 
@@ -375,8 +376,8 @@ Touch is already first-class in §3/§5; consolidated here as a per-game build g
 | 5 | Brücken-Bau | Drag | M | Strongest reuse of game DNA + `ROUTE_OPTIONS` |
 | 6 | Zahlen-Memory | Drag | M | Highest learning value of the drag games |
 
-### 🟡 Bald (the other 4 committed)
-Einmaleins-Bingo (M) · Dreh-Zwillinge (S) · Renn-Duell (S) · Zahlen-Hüpfer (M) · *(plus revisit scoreboards)*
+### 🟢 Complete committed set
+Einmaleins-Bingo (M) · Dreh-Zwillinge (S) · Faktoren-Finder (S) · Zahlen-Hüpfer (M) · *(plus revisit scoreboards)*
 
 ### 🔵 Backlog (not committed)
 Everything in §4.2, gated as noted — including the **seedable-`makeQuestion` refactor** that unblocks Ghost Race / Daily, the **icon-only Zauberbäckerei** re-scope, and the **9+** division/divisibility games.
@@ -393,6 +394,6 @@ Everything in §4.2, gated as noted — including the **seedable-`makeQuestion` 
 4. **Settings display.** Confirm the hub hides route length for non-route games and only route-shaped game screens expose the route chip/control?
 5. **3-button home overflow.** Approve making „Mini-Spiele" a **smaller tertiary tier** if the 360×640 landscape test shows the stack overflowing?
 6. **Seedable engine.** Approve refactoring `makeQuestion(settings, rng = Math.random)` later to unblock Daily Challenge / Ghost Race — and **pinning one canonical difficulty** for the daily so all players share one board?
-7. **German naming.** Approve the resolved names — reflex backlog **„Bach-Sprung"** and committed number-line **„Zahlen-Hüpfer"** (clash resolved), and the committed titles (Antwort-Karten, Der hungrige Drache, Brücken-Bau, Zahlen-Memory, Zahlen-Regen, 60-Sekunden-Blitz, Einmaleins-Bingo, Dreh-Zwillinge, Renn-Duell, Zahlen-Hüpfer)? Any to reword for the age group?
+7. **German naming.** Approve the resolved names — reflex backlog **„Bach-Sprung"** and committed number-line **„Zahlen-Hüpfer"** (clash resolved), and the committed titles (Antwort-Karten, Der hungrige Drache, Brücken-Bau, Zahlen-Memory, Zahlen-Regen, 60-Sekunden-Blitz, Einmaleins-Bingo, Dreh-Zwillinge, Faktoren-Finder, Zahlen-Hüpfer)? Any to reword for the age group?
 8. **Sound.** Confirm audio is **out of MVP** (no audio exists today; it is net-new with autoplay/asset/mute work).
 9. **9+ content.** Confirm division (Zahlen-Familie) and divisibility (Welche passt nicht) stay **backlog + age-gated**, not in the shipped set.

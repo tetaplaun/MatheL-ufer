@@ -1,0 +1,240 @@
+.play {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(12px, 2.6vh, 22px);
+  min-height: 100%;
+  padding: clamp(10px, 2.4vw, 22px);
+  overflow: auto;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px clamp(16px, 4vw, 32px);
+  color: #16313d;
+  font-weight: 900;
+}
+
+.prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px 14px;
+  width: min(560px, 100%);
+  padding: 12px 18px;
+  border: 4px solid rgba(36, 127, 195, 0.16);
+  border-radius: 18px;
+  background: #fff;
+  color: #16313d;
+  box-shadow: 0 6px 0 rgba(36, 127, 195, 0.18);
+}
+
+.prompt span {
+  color: #456776;
+  font-size: clamp(0.95rem, 2.4vw, 1.2rem);
+  font-weight: 900;
+}
+
+.prompt strong {
+  color: #247fc3;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  line-height: 1;
+}
+
+.board {
+  position: relative;
+  display: grid;
+  gap: clamp(6px, 1.4vw, 10px);
+  width: min(76vh, 620px, 100%);
+  aspect-ratio: 1;
+  padding: clamp(8px, 1.8vw, 14px);
+  border: 5px solid rgba(22, 49, 61, 0.1);
+  border-radius: 18px;
+  background: rgba(36, 127, 195, 0.07);
+}
+
+.board[data-size="3"] {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.board[data-size="4"] {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.board[data-size="5"] {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  border: 4px solid rgba(22, 49, 61, 0.12);
+  border-radius: 14px;
+  background: #fff;
+  color: #16313d;
+  font-size: clamp(1.1rem, 4.8vw, 2.5rem);
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 5px 0 rgba(36, 127, 195, 0.18);
+}
+
+.board[data-size="5"] .cell {
+  font-size: clamp(0.95rem, 4vw, 2rem);
+}
+
+.cell:focus-visible {
+  outline: 4px solid rgba(255, 200, 61, 0.72);
+  outline-offset: 2px;
+}
+
+.cell:active {
+  transform: translateY(2px);
+  box-shadow: 0 3px 0 rgba(36, 127, 195, 0.18);
+}
+
+.cellMarked {
+  border-color: #2f9b61;
+  background: rgba(47, 155, 97, 0.16);
+  color: #2f9b61;
+  box-shadow: none;
+}
+
+.cellMarked::after {
+  content: "✓";
+  margin-left: 4px;
+  font-size: 0.7em;
+}
+
+.cellWin {
+  animation: bingo-win 0.7s ease;
+  border-color: var(--yellow);
+  background: rgba(255, 200, 61, 0.22);
+  color: #16313d;
+}
+
+.cellWrong {
+  animation: bingo-wrong 0.42s ease;
+  border-color: var(--accent);
+  background: #ffe4e2;
+  color: var(--accent-dark);
+}
+
+.microLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.doneCard {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 18px;
+  text-align: center;
+}
+
+.doneCard h3 {
+  color: #16313d;
+  font-size: clamp(2.2rem, 8vw, 4rem);
+}
+
+.doneStat {
+  color: #16313d;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  font-weight: 850;
+}
+
+.doneBest {
+  color: #247fc3;
+  font-weight: 950;
+}
+
+.doneActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+@keyframes bingo-wrong {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px) rotate(-2deg);
+  }
+  75% {
+    transform: translateX(7px) rotate(2deg);
+  }
+}
+
+@keyframes bingo-win {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.08);
+  }
+}
+
+@media (max-width: 520px) {
+  .board {
+    width: min(94vw, 520px);
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .play {
+    align-content: start;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .prompt {
+    padding: 7px 12px;
+    border-radius: 14px;
+  }
+
+  .prompt strong {
+    font-size: clamp(1.6rem, 5vw, 2.3rem);
+  }
+
+  .board {
+    width: min(70vh, 470px, 100%);
+    gap: 5px;
+    padding: 7px;
+    border-width: 4px;
+    border-radius: 14px;
+  }
+
+  .cell {
+    border-width: 3px;
+    border-radius: 10px;
+    font-size: clamp(0.95rem, 3.2vw, 1.45rem);
+  }
+
+  .board[data-size="5"] .cell {
+    font-size: clamp(0.82rem, 2.8vw, 1.2rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .cellWrong,
+  .cellWin {
+    animation: none;
+    transition: none;
+  }
+}

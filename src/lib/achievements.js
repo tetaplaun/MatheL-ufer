@@ -23,7 +23,7 @@ export const MINI_GAME_IDS = [
   'blitz',
   'bingo',
   'drehzwillinge',
-  'rennduell',
+  'faktorenfinder',
   'zahlenhuepfer',
 ];
 
