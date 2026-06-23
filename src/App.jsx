@@ -14,6 +14,7 @@ import {
   makeQuestion,
   makeSettingsKey,
 } from './lib/engine.js';
+import { AuthControl } from './components/AuthControl.jsx';
 import { ConfettiBurst, makeConfettiPieces } from './components/ConfettiBurst.jsx';
 import { DifficultyPanel } from './components/DifficultyPanel.jsx';
 import { Runner } from './components/Runner.jsx';
@@ -31,12 +32,14 @@ import {
   saveLastPlayerName,
   saveSupabaseLeaderboardEntry,
 } from './lib/leaderboard.js';
+import { useSupabaseAuth } from './lib/useSupabaseAuth.js';
 
 const MIN_SPEED = 2.2;
 const BASE_SPEED = 5.2;
 const MAX_SPEED = 11.5;
 
 export default function App() {
+  const auth = useSupabaseAuth();
   const [gameSettings, setGameSettings] = useState(DEFAULT_SETTINGS);
   const [leaderboardSettings, setLeaderboardSettings] = useState(DEFAULT_SETTINGS);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
@@ -274,7 +277,7 @@ export default function App() {
       return;
     }
 
-    const entryName = playerName.trim().slice(0, 18) || 'Spieler';
+    const entryName = auth.isLoggedIn ? auth.username : playerName.trim().slice(0, 18) || 'Spieler';
     const entry = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       name: entryName,
@@ -316,8 +319,10 @@ export default function App() {
       persistLocalLeaderboard(nextEntries);
       return nextEntries;
     });
-    saveLastPlayerName(entryName);
-    setPlayerName(entryName);
+    if (!auth.isLoggedIn) {
+      saveLastPlayerName(entryName);
+      setPlayerName(entryName);
+    }
     setSavedRaceId(finishTime);
     setIsSavingLeaderboard(false);
   }
@@ -822,13 +827,14 @@ export default function App() {
 
             <form className="leaderboard-save" onSubmit={saveLeaderboardEntry}>
               <label>
-                <span>Name für Rangliste</span>
+                <span>{auth.isLoggedIn ? 'Angemeldet als' : 'Name für Rangliste'}</span>
                 <input
-                  disabled={hasSavedCurrentRace || isSavingLeaderboard}
+                  disabled={auth.isLoggedIn || hasSavedCurrentRace || isSavingLeaderboard}
                   maxLength="18"
                   placeholder="Name"
+                  readOnly={auth.isLoggedIn}
                   type="text"
-                  value={playerName}
+                  value={auth.isLoggedIn ? auth.username : playerName}
                   onChange={(event) => setPlayerName(event.target.value)}
                 />
               </label>
@@ -862,6 +868,8 @@ export default function App() {
           </div>
         </section>
       )}
+
+      <AuthControl auth={auth} />
     </main>
   );
 }
