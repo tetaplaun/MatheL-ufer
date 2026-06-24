@@ -220,13 +220,15 @@ export const ACHIEVEMENTS = [
     metric: (s) => (s.fastestAnswerSeconds != null && s.fastestAnswerSeconds <= 1 ? 1 : 0),
   },
   {
-    id: 'top_speed_15',
+    // Target must stay <= the runner's MAX_SPEED in App.jsx (11.5 m/s); the
+    // race clamps speed to that cap, so a higher target can never be reached.
+    id: 'top_speed_11',
     title: 'Tempo-Teufel',
-    description: 'Erreiche 15 m/s Tempo.',
+    description: 'Erreiche 11 m/s Tempo.',
     icon: '🚀',
     tier: 'silver',
     category: 'speed',
-    target: 15,
+    target: 11,
     metric: (s) => s.topSpeed,
   },
   {
