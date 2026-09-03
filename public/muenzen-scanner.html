@@ -1,376 +1,40 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#07111f">
-  <title>Münzen-Scanner</title>
-  <style>
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{margin:0;width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#07111f;color:#fff;overflow:hidden}
-    button{font:inherit;touch-action:manipulation}
-    .hide{display:none!important}
-    .screen{position:fixed;inset:0}
-    #choose{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;background:radial-gradient(circle at 50% 5%,#183d6d,#07111f 62%)}
-    h1{margin:0 0 8px;font-size:38px}
-    .sub{opacity:.7;margin-bottom:28px}
-    .people{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(460px,100%)}
-    .person{min-height:112px;border:1px solid #39516f;border-radius:23px;background:#142b49;color:#fff;font-size:23px;font-weight:800;box-shadow:0 12px 30px #0004;cursor:pointer}
-    .person:active,.btn:active{transform:scale(.97)}
-    #game{background:#000}
-    video{position:absolute;width:100%;height:100%;object-fit:cover}
-    .fallback{position:absolute;inset:0;display:grid;place-items:center;padding:35px;text-align:center;background:radial-gradient(circle,#203d62,#05090f);color:#cbd8e8;line-height:1.5}
-    .shade{position:absolute;inset:0;background:#0004}
-    .top{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 14px);left:14px;right:14px;display:flex;justify-content:space-between;gap:10px}
-    .badge{padding:11px 14px;border-radius:17px;background:#000a;border:1px solid #ffffff26;font-weight:800;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-    .coin{color:#ffd43b;margin-right:7px}
-    .frame{position:absolute;z-index:3;left:50%;top:47%;transform:translate(-50%,-50%);width:min(88vw,620px);height:min(24vh,220px);min-height:155px;border:3px solid #fff;border-radius:24px;box-shadow:0 0 0 9999px #0006}
-    .line{position:absolute;left:18px;right:18px;top:50%;height:3px;background:#42ec8b;box-shadow:0 0 13px #42ec8b;animation:scanline 1.8s ease-in-out infinite alternate}
-    @keyframes scanline{from{transform:translateY(-55px)}to{transform:translateY(55px)}}
-    .hint{position:absolute;z-index:4;left:22px;right:22px;bottom:calc(env(safe-area-inset-bottom) + 103px);text-align:center;text-shadow:0 2px 6px #000;font-size:16px}
-    .status{min-height:46px;margin-top:7px;color:#cfe8ff;font-weight:700}
-    .controls{position:absolute;z-index:5;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}
-    .btn{min-height:58px;border:0;border-radius:18px;padding:12px 16px;font-weight:800;cursor:pointer}
-    .btn:disabled{opacity:.55;transform:none}
-    .main{background:#fff;color:#07111f}
-    .side{background:#20324b;color:#fff;border:1px solid #ffffff1f}
-    .round{width:58px;font-size:25px}
-    .overlay{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#000c;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-    .card{width:min(430px,100%);padding:25px;border-radius:25px;background:#11223a;border:1px solid #ffffff25;text-align:center}
-    .big{font-size:64px;font-weight:950;margin:8px}
-    .delta{font-size:21px;font-weight:850;margin:14px 0}
-    .good{color:#50ec9a}
-    .bad{color:#ff8f8f}
-    .detail{opacity:.78;line-height:1.45}
-    .stack{display:grid;gap:10px;margin-top:20px}
-    canvas{display:none}
-    @media(orientation:landscape) and (max-height:560px){
-      .frame{top:43%;height:40vh;width:min(64vw,620px)}
-      .hint{bottom:78px}
-      .controls{grid-template-columns:auto minmax(240px,430px);justify-content:center}
-      .btn{min-height:52px}
-    }
-  </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<title>Münzen-Scanner</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#07111f;color:#fff;overflow:hidden}button,input{font:inherit;touch-action:manipulation}.hide{display:none!important}.screen{position:fixed;inset:0}#choose{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;background:radial-gradient(circle at 50% 5%,#183d6d,#07111f 62%)}h1{margin:0 0 8px;font-size:38px}.sub{opacity:.7;margin-bottom:28px}.people{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(460px,100%)}.person{min-height:112px;border:1px solid #39516f;border-radius:23px;background:#142b49;color:#fff;font-size:23px;font-weight:800;box-shadow:0 12px 30px #0004;cursor:pointer}.person:active,.btn:active{transform:scale(.97)}#game{background:#000}video{position:absolute;width:100%;height:100%;object-fit:cover}.fallback{position:absolute;inset:0;display:grid;place-items:center;padding:35px;text-align:center;background:radial-gradient(circle,#203d62,#05090f);color:#cbd8e8;line-height:1.5}.shade{position:absolute;inset:0;background:#0004}.top{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 14px);left:14px;right:14px;display:flex;justify-content:space-between;gap:10px}.badge{padding:11px 14px;border-radius:17px;background:#000a;border:1px solid #ffffff26;font-weight:800;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}.coin{color:#ffd43b;margin-right:7px}.frame{position:absolute;z-index:3;left:50%;top:47%;transform:translate(-50%,-50%);width:min(88vw,620px);height:min(24vh,220px);min-height:155px;border:3px solid #fff;border-radius:24px;box-shadow:0 0 0 9999px #0006}.line{position:absolute;left:18px;right:18px;top:50%;height:3px;background:#42ec8b;box-shadow:0 0 13px #42ec8b;animation:scanline 1.8s ease-in-out infinite alternate}@keyframes scanline{from{transform:translateY(-55px)}to{transform:translateY(55px)}}.hint{position:absolute;z-index:4;left:22px;right:22px;bottom:calc(env(safe-area-inset-bottom) + 103px);text-align:center;text-shadow:0 2px 6px #000;font-size:16px}.status{min-height:46px;margin-top:7px;color:#cfe8ff;font-weight:700}.controls{position:absolute;z-index:5;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.btn{min-height:58px;border:0;border-radius:18px;padding:12px 16px;font-weight:800;cursor:pointer}.btn:disabled{opacity:.55}.main{background:#fff;color:#07111f}.side{background:#20324b;color:#fff;border:1px solid #ffffff1f}.round{width:58px;font-size:25px}.overlay{position:absolute;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:#000c;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}.card{width:min(430px,100%);padding:25px;border-radius:25px;background:#11223a;border:1px solid #ffffff25;text-align:center}.big{font-size:64px;font-weight:950;margin:8px}.delta{font-size:21px;font-weight:850;margin:14px 0}.good{color:#50ec9a}.bad{color:#ff8f8f}.detail{opacity:.78;line-height:1.45}.stack{display:grid;gap:10px;margin-top:20px}#passwordInput{width:100%;height:56px;border:1px solid #ffffff35;border-radius:16px;padding:0 14px;background:#07111f;color:#fff;font-size:21px;text-align:center;letter-spacing:2px;margin-top:14px}#passwordError{min-height:24px;margin-top:9px;color:#ff8f8f;font-weight:700}canvas{display:none}@media(orientation:landscape) and (max-height:560px){.frame{top:43%;height:40vh;width:min(64vw,620px)}.hint{bottom:78px}.controls{grid-template-columns:auto minmax(240px,430px);justify-content:center}.btn{min-height:52px}}
+</style>
+<script defer src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <section id="choose" class="screen">
-    <h1>Wer spielt?</h1>
-    <div class="sub">Wähle eine Person aus</div>
-    <div class="people">
-      <button type="button" class="person" data-name="Nick">Nick</button>
-      <button type="button" class="person" data-name="Tim">Tim</button>
-      <button type="button" class="person" data-name="Boco">Boco</button>
-      <button type="button" class="person" data-name="Chris">Chris</button>
-    </div>
-  </section>
-
-  <section id="game" class="screen hide">
-    <video id="video" autoplay muted playsinline></video>
-    <div id="fallback" class="fallback hide">
-      <div><b>Kamera nicht verfügbar.</b><br>Öffne die Seite in Safari, erlaube den Kamerazugriff und lade sie neu.</div>
-    </div>
-    <div class="shade"></div>
-    <div class="top">
-      <div class="badge"><span class="coin">●</span><span id="coins">5</span> Münzen</div>
-      <div id="who" class="badge"></div>
-    </div>
-    <div id="frame" class="frame"><div class="line"></div></div>
-    <div class="hint">
-      Halte nur die blaue Anzeige mit <b>0.0, 1.0 …</b> in den Rahmen.
-      <div id="status" class="status"></div>
-    </div>
-    <div class="controls">
-      <button type="button" id="back" class="btn side round" aria-label="Zurück">‹</button>
-      <button type="button" id="scan" class="btn main">Ergebnis scannen</button>
-    </div>
-
-    <div id="result" class="overlay hide">
-      <div class="card">
-        <div>Erkanntes Ergebnis</div>
-        <div id="read" class="big">0.0</div>
-        <h2 id="title">0 Fehler</h2>
-        <div id="delta" class="delta good"></div>
-        <div id="detail" class="detail"></div>
-        <div class="stack">
-          <button type="button" id="again" class="btn main">Nächste Runde</button>
-        </div>
-      </div>
-    </div>
-
-    <canvas id="canvas"></canvas>
-  </section>
-
-  <script>
-  (function(){
-    'use strict';
-
-    var START_COINS=5;
-    var ROUND_COST=5;
-    var PERFECT_REWARD=10;
-    var player='';
-    var money=5;
-    var stream=null;
-    var worker=null;
-    var workerTask=null;
-    var busy=false;
-
-    var $=function(id){return document.getElementById(id)};
-    var choose=$('choose');
-    var game=$('game');
-    var video=$('video');
-    var fallback=$('fallback');
-    var coins=$('coins');
-    var who=$('who');
-    var frame=$('frame');
-    var status=$('status');
-    var scan=$('scan');
-    var result=$('result');
-    var read=$('read');
-    var title=$('title');
-    var delta=$('delta');
-    var detail=$('detail');
-    var canvas=$('canvas');
-
-    function show(element){element.classList.remove('hide')}
-    function hide(element){element.classList.add('hide')}
-    function storageKey(){return 'wam-coins-'+player}
-
-    function loadCoins(){
-      try{
-        var saved=localStorage.getItem(storageKey());
-        return saved===null ? START_COINS : Math.max(0,parseInt(saved,10)||0);
-      }catch(error){
-        return START_COINS;
-      }
-    }
-
-    function saveCoins(){
-      coins.textContent=money;
-      try{localStorage.setItem(storageKey(),String(money))}catch(error){}
-    }
-
-    function setMessage(text){status.textContent=text||''}
-
-    function stopCamera(){
-      if(stream){
-        stream.getTracks().forEach(function(track){track.stop()});
-      }
-      stream=null;
-      video.srcObject=null;
-    }
-
-    async function startCamera(){
-      hide(fallback);
-      try{
-        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){throw new Error('Keine Kamera')}
-        stream=await navigator.mediaDevices.getUserMedia({
-          audio:false,
-          video:{
-            facingMode:{ideal:'environment'},
-            width:{ideal:1920},
-            height:{ideal:1080}
-          }
-        });
-        video.srcObject=stream;
-        await video.play();
-        setMessage('Kamera bereit');
-      }catch(error){
-        show(fallback);
-        setMessage('Kamerazugriff fehlt. Bitte in Safari erlauben und neu laden.');
-      }
-    }
-
-    async function selectPlayer(name){
-      player=name;
-      money=loadCoins();
-      who.textContent=name;
-      saveCoins();
-      hide(choose);
-      show(game);
-      setMessage('Kamera wird gestartet …');
-      startCamera();
-      prepareRecognition();
-    }
-
-    document.querySelectorAll('.person').forEach(function(button){
-      button.addEventListener('click',function(){selectPlayer(button.getAttribute('data-name'))});
-    });
-
-    $('back').addEventListener('click',function(){
-      stopCamera();
-      hide(result);
-      hide(game);
-      show(choose);
-      setMessage('');
-    });
-
-    function canPlay(){
-      if(money>=ROUND_COST){return true}
-      if(confirm('Du hast keine 5 Münzen mehr. Münzstand auf 5 zurücksetzen?')){
-        money=START_COINS;
-        saveCoins();
-        return true;
-      }
-      return false;
-    }
-
-    async function prepareRecognition(){
-      if(worker){return worker}
-      if(workerTask){return workerTask}
-      if(!window.Tesseract){return null}
-
-      workerTask=(async function(){
-        try{
-          var created=await Tesseract.createWorker('eng',1,{
-            logger:function(progress){
-              if(busy && progress.status==='recognizing text'){
-                setMessage('Zahl wird erkannt … '+Math.round((progress.progress||0)*100)+' %');
-              }
-            }
-          });
-          await created.setParameters({
-            tessedit_char_whitelist:'0123456789.,Oo',
-            tessedit_pageseg_mode:Tesseract.PSM ? Tesseract.PSM.SINGLE_LINE : '7'
-          });
-          worker=created;
-          return created;
-        }catch(error){
-          workerTask=null;
-          return null;
-        }
-      })();
-
-      return workerTask;
-    }
-
-    function captureDisplay(){
-      if(!video.videoWidth){throw new Error('Kamera ist noch nicht bereit.')}
-
-      var videoRect=video.getBoundingClientRect();
-      var frameRect=frame.getBoundingClientRect();
-      var scale=Math.max(videoRect.width/video.videoWidth,videoRect.height/video.videoHeight);
-      var displayedWidth=video.videoWidth*scale;
-      var displayedHeight=video.videoHeight*scale;
-      var offsetX=(videoRect.width-displayedWidth)/2;
-      var offsetY=(videoRect.height-displayedHeight)/2;
-      var x=(frameRect.left-videoRect.left-offsetX)/scale;
-      var y=(frameRect.top-videoRect.top-offsetY)/scale;
-      var width=frameRect.width/scale;
-      var height=frameRect.height/scale;
-
-      x=Math.max(0,x);
-      y=Math.max(0,y);
-      width=Math.min(video.videoWidth-x,width);
-      height=Math.min(video.videoHeight-y,height);
-
-      canvas.width=1000;
-      canvas.height=Math.round(1000*height/width);
-      var context=canvas.getContext('2d',{willReadFrequently:true});
-      context.drawImage(video,x,y,width,height,0,0,canvas.width,canvas.height);
-
-      var image=context.getImageData(0,0,canvas.width,canvas.height);
-      var pixels=image.data;
-      var bluePixels=0;
-
-      for(var i=0;i<pixels.length;i+=4){
-        var red=pixels[i];
-        var green=pixels[i+1];
-        var blue=pixels[i+2];
-        var isBlue=blue>95 && green>80 && blue>red+22 && green>red+8;
-        pixels[i]=pixels[i+1]=pixels[i+2]=isBlue?0:255;
-        pixels[i+3]=255;
-        if(isBlue){bluePixels++}
-      }
-
-      context.putImageData(image,0,0);
-      if(bluePixels<25){throw new Error('Keine blauen Ziffern gefunden.')}
-      return canvas;
-    }
-
-    function parseResult(text){
-      var cleaned=String(text||'')
-        .toUpperCase()
-        .replace(/O/g,'0')
-        .replace(/,/g,'.')
-        .replace(/\s/g,'')
-        .replace(/[^0-9.]/g,'');
-
-      var decimalMatch=cleaned.match(/(\d{1,2})\./);
-      if(decimalMatch){return Number(decimalMatch[1])}
-
-      var digits=cleaned.replace(/\D/g,'');
-      if(!digits){return null}
-      if(digits.length>1 && digits.slice(-1)==='0'){
-        digits=digits.slice(0,-1)||'0';
-      }
-      var value=parseInt(digits.slice(0,2),10);
-      return isFinite(value)?value:null;
-    }
-
-    function applyResult(value){
-      value=Math.max(0,Math.min(99,Math.round(Number(value))));
-      if(!isFinite(value)){return}
-
-      money-=ROUND_COST;
-      if(value===0){money+=PERFECT_REWARD}
-      saveCoins();
-
-      read.textContent=value.toFixed(1);
-      title.textContent=value===0 ? '0 Fehler – perfekt!' : value===1 ? '1 Fehler' : value+' Fehler';
-
-      if(value===0){
-        delta.textContent='−5 + 10 = +5 Münzen';
-        delta.className='delta good';
-        detail.textContent='5 Münzen für die Runde wurden abgezogen. Für 0 Fehler bekommst du 10 Münzen zurück.';
-      }else{
-        delta.textContent='−5 Münzen';
-        delta.className='delta bad';
-        detail.textContent=value.toFixed(1)+' bedeutet '+value+(value===1?' Fehler.':' Fehler.');
-      }
-
-      show(result);
-      setMessage('');
-    }
-
-    async function scanResult(){
-      if(busy || !canPlay()){return}
-      if(!stream){
-        setMessage('Die Kamera läuft nicht. Erlaube den Kamerazugriff in Safari und lade die Seite neu.');
-        return;
-      }
-
-      busy=true;
-      scan.disabled=true;
-      scan.textContent='Wird gescannt …';
-      setMessage('Foto wird ausgewertet …');
-
-      try{
-        var picture=captureDisplay();
-        var recognitionWorker=await prepareRecognition();
-        if(!recognitionWorker){throw new Error('Texterkennung konnte nicht geladen werden.')}
-        var output=await recognitionWorker.recognize(picture);
-        var value=parseResult(output.data.text);
-        if(value===null){throw new Error('Zahl nicht sicher erkannt.')}
-        applyResult(value);
-      }catch(error){
-        setMessage((error.message||'Erkennung fehlgeschlagen.')+' Bitte neu ausrichten und noch einmal scannen.');
-      }finally{
-        busy=false;
-        scan.disabled=false;
-        scan.textContent='Ergebnis scannen';
-      }
-    }
-
-    scan.addEventListener('click',scanResult);
-
-    $('again').addEventListener('click',function(){
-      hide(result);
-      setMessage('Bereit für die nächste Runde');
-    });
-
-    setTimeout(prepareRecognition,900);
-  })();
-  </script>
+<section id="choose" class="screen"><h1>Wer spielt?</h1><div class="sub">Wähle eine Person aus</div><div class="people"><button type="button" class="person" data-name="Nick">🔒 Nick</button><button type="button" class="person" data-name="Tim">Tim</button><button type="button" class="person" data-name="Boco">Boco</button><button type="button" class="person" data-name="Chris">Chris</button></div></section>
+<div id="passwordBox" class="overlay hide"><div class="card"><h2>Nick ist geschützt 🔒</h2><div>Bitte Passwort eingeben</div><input id="passwordInput" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Passwort"><div id="passwordError"></div><div class="stack"><button type="button" id="passwordOk" class="btn main">Öffnen</button><button type="button" id="passwordCancel" class="btn side">Abbrechen</button></div></div></div>
+<section id="game" class="screen hide"><video id="video" autoplay muted playsinline></video><div id="fallback" class="fallback hide"><div><b>Kamera nicht verfügbar.</b><br>Öffne die Seite in Safari, erlaube den Kamerazugriff und lade sie neu.</div></div><div class="shade"></div><div class="top"><div class="badge"><span class="coin">●</span><span id="coins">5</span> Münzen</div><div id="who" class="badge"></div></div><div id="frame" class="frame"><div class="line"></div></div><div class="hint">Halte nur die blaue Anzeige mit <b>0.0, 1.0 …</b> in den Rahmen.<div id="status" class="status"></div></div><div class="controls"><button type="button" id="back" class="btn side round" aria-label="Zurück">‹</button><button type="button" id="scan" class="btn main">Ergebnis scannen</button></div><div id="result" class="overlay hide"><div class="card"><div>Erkanntes Ergebnis</div><div id="read" class="big">0.0</div><h2 id="title">0 Fehler</h2><div id="delta" class="delta good"></div><div id="detail" class="detail"></div><div class="stack"><button type="button" id="again" class="btn main">Nächste Runde</button></div></div></div><canvas id="canvas"></canvas></section>
+<script>
+(function(){'use strict';
+var START_COINS=5,ROUND_COST=5,PERFECT_REWARD=10,player='',money=5,stream=null,worker=null,workerTask=null,busy=false;
+var $=function(id){return document.getElementById(id)},choose=$('choose'),game=$('game'),video=$('video'),fallback=$('fallback'),coins=$('coins'),who=$('who'),frame=$('frame'),status=$('status'),scan=$('scan'),result=$('result'),read=$('read'),title=$('title'),delta=$('delta'),detail=$('detail'),canvas=$('canvas'),passwordBox=$('passwordBox'),passwordInput=$('passwordInput'),passwordError=$('passwordError');
+function show(e){e.classList.remove('hide')}function hide(e){e.classList.add('hide')}function storageKey(){return'wam-coins-'+player}function loadCoins(){try{var s=localStorage.getItem(storageKey());return s===null?START_COINS:Math.max(0,parseInt(s,10)||0)}catch(e){return START_COINS}}function saveCoins(){coins.textContent=money;try{localStorage.setItem(storageKey(),String(money))}catch(e){}}function setMessage(t){status.textContent=t||''}
+function stopCamera(){if(stream){stream.getTracks().forEach(function(t){t.stop()})}stream=null;video.srcObject=null}
+async function startCamera(){hide(fallback);try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Keine Kamera');stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});video.srcObject=stream;await video.play();setMessage('Kamera bereit')}catch(e){show(fallback);setMessage('Kamerazugriff fehlt. Bitte in Safari erlauben und neu laden.')}}
+async function selectPlayer(name){player=name;money=loadCoins();who.textContent=name;saveCoins();hide(choose);show(game);setMessage('Kamera wird gestartet …');startCamera();prepareRecognition()}
+function requestNickPassword(){passwordInput.value='';passwordError.textContent='';show(passwordBox);setTimeout(function(){passwordInput.focus()},100)}
+function checkPassword(){if(passwordInput.value==='20141114'){hide(passwordBox);selectPlayer('Nick')}else{passwordError.textContent='Falsches Passwort';passwordInput.select()}}
+document.querySelectorAll('.person').forEach(function(button){button.addEventListener('click',function(){var name=button.getAttribute('data-name');if(name==='Nick')requestNickPassword();else selectPlayer(name)})});
+$('passwordOk').addEventListener('click',checkPassword);$('passwordCancel').addEventListener('click',function(){hide(passwordBox);passwordError.textContent=''});passwordInput.addEventListener('keydown',function(e){if(e.key==='Enter')checkPassword()});
+$('back').addEventListener('click',function(){stopCamera();hide(result);hide(game);show(choose);setMessage('')});
+function canPlay(){if(money>=ROUND_COST)return true;if(confirm('Du hast keine 5 Münzen mehr. Münzstand auf 5 zurücksetzen?')){money=START_COINS;saveCoins();return true}return false}
+async function prepareRecognition(){if(worker)return worker;if(workerTask)return workerTask;if(!window.Tesseract)return null;workerTask=(async function(){try{var w=await Tesseract.createWorker('eng',1,{logger:function(p){if(busy&&p.status==='recognizing text')setMessage('Zahl wird erkannt … '+Math.round((p.progress||0)*100)+' %')}});await w.setParameters({tessedit_char_whitelist:'0123456789.,Oo',tessedit_pageseg_mode:Tesseract.PSM?Tesseract.PSM.SINGLE_LINE:'7'});worker=w;return w}catch(e){workerTask=null;return null}})();return workerTask}
+function captureDisplay(){if(!video.videoWidth)throw Error('Kamera ist noch nicht bereit.');var vr=video.getBoundingClientRect(),fr=frame.getBoundingClientRect(),scale=Math.max(vr.width/video.videoWidth,vr.height/video.videoHeight),dw=video.videoWidth*scale,dh=video.videoHeight*scale,ox=(vr.width-dw)/2,oy=(vr.height-dh)/2,x=(fr.left-vr.left-ox)/scale,y=(fr.top-vr.top-oy)/scale,w=fr.width/scale,h=fr.height/scale;x=Math.max(0,x);y=Math.max(0,y);w=Math.min(video.videoWidth-x,w);h=Math.min(video.videoHeight-y,h);canvas.width=1000;canvas.height=Math.round(1000*h/w);var c=canvas.getContext('2d',{willReadFrequently:true});c.drawImage(video,x,y,w,h,0,0,canvas.width,canvas.height);var im=c.getImageData(0,0,canvas.width,canvas.height),p=im.data,found=0;for(var i=0;i<p.length;i+=4){var r=p[i],g=p[i+1],b=p[i+2],isBlue=b>95&&g>80&&b>r+22&&g>r+8;p[i]=p[i+1]=p[i+2]=isBlue?0:255;p[i+3]=255;if(isBlue)found++}c.putImageData(im,0,0);if(found<25)throw Error('Keine blauen Ziffern gefunden.');return canvas}
+function parseResult(text){var cleaned=String(text||'').toUpperCase().replace(/O/g,'0').replace(/,/g,'.').replace(/\s/g,'').replace(/[^0-9.]/g,'');var m=cleaned.match(/(\d{1,2})\./);if(m)return Number(m[1]);var digits=cleaned.replace(/\D/g,'');if(!digits)return null;if(digits.length>1&&digits.slice(-1)==='0')digits=digits.slice(0,-1)||'0';var v=parseInt(digits.slice(0,2),10);return isFinite(v)?v:null}
+function applyResult(v){v=Math.max(0,Math.min(99,Math.round(Number(v))));if(!isFinite(v))return;money-=ROUND_COST;if(v===0)money+=PERFECT_REWARD;saveCoins();read.textContent=v.toFixed(1);title.textContent=v===0?'0 Fehler – perfekt!':v===1?'1 Fehler':v+' Fehler';if(v===0){delta.textContent='−5 + 10 = +5 Münzen';delta.className='delta good';detail.textContent='5 Münzen für die Runde wurden abgezogen. Für 0 Fehler bekommst du 10 Münzen zurück.'}else{delta.textContent='−5 Münzen';delta.className='delta bad';detail.textContent=v.toFixed(1)+' bedeutet '+v+(v===1?' Fehler.':' Fehler.')}show(result);setMessage('')}
+async function scanResult(){if(busy||!canPlay())return;if(!stream){setMessage('Die Kamera läuft nicht. Erlaube den Kamerazugriff in Safari und lade die Seite neu.');return}busy=true;scan.disabled=true;scan.textContent='Wird gescannt …';setMessage('Foto wird ausgewertet …');try{var picture=captureDisplay(),w=await prepareRecognition();if(!w)throw Error('Texterkennung konnte nicht geladen werden.');var out=await w.recognize(picture),v=parseResult(out.data.text);if(v===null)throw Error('Zahl nicht sicher erkannt.');applyResult(v)}catch(e){setMessage((e.message||'Erkennung fehlgeschlagen.')+' Bitte neu ausrichten und noch einmal scannen.')}finally{busy=false;scan.disabled=false;scan.textContent='Ergebnis scannen'}}
+scan.addEventListener('click',scanResult);$('again').addEventListener('click',function(){hide(result);setMessage('Bereit für die nächste Runde')});setTimeout(prepareRecognition,900);
+})();
+</script>
 </body>
 </html>
