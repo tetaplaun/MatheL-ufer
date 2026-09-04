@@ -1,4 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/muenzen-scanner.html", "destination": "/muenzen-scanner-v2.html" }
+  ]
 }
